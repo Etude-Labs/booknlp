@@ -27,6 +27,45 @@ GPU time, Titan RTX (mins.)*|2.1|2.2|
 
 *timings measure speed to run BookNLP on a sample book of *The Secret Garden* (99K tokens).   To explore running BookNLP in Google Colab on a GPU, see [this notebook](https://colab.research.google.com/drive/1c9nlqGRbJ-FUP2QJe49h21hB4kUXdU_k?usp=sharing).
 
+## REST API
+
+BookNLP now provides a REST API for processing text asynchronously with production-ready features:
+
+- **Authentication**: API key-based authentication
+- **Rate Limiting**: Configurable per-endpoint limits
+- **Async Processing**: Submit jobs and poll for results
+- **Metrics**: Prometheus metrics for monitoring
+- **Health Checks**: Liveness and readiness endpoints
+
+### Quick Start
+
+```bash
+# Start the API server
+docker run -p 8000:8000 \
+  -e BOOKNLP_AUTH_REQUIRED=true \
+  -e BOOKNLP_API_KEY=your-secret-key \
+  booknlp:latest
+
+# Submit a job
+curl -X POST "http://localhost:8000/v1/jobs" \
+  -H "X-API-Key: your-secret-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "This is a test document.",
+    "book_id": "test-book",
+    "model": "small",
+    "pipeline": ["entities", "quotes"]
+  }'
+
+# Check job status
+curl -X GET "http://localhost:8000/v1/jobs/{job_id}" \
+  -H "X-API-Key: your-secret-key"
+
+# Get results
+curl -X GET "http://localhost:8000/v1/jobs/{job_id}/result" \
+  -H "X-API-Key: your-secret-key"
+```
+
 ## Installation
 
 ### Option 1: Docker (Recommended)
@@ -36,352 +75,389 @@ The easiest way to use BookNLP is via Docker with the pre-built REST API:
 #### CPU Version
 
 ```bash
-# Pull or build the image
+# Pull the image
 docker pull booknlp:cpu
-# OR build locally
-DOCKER_BUILDKIT=1 docker build -t booknlp:cpu .
 
 # Run the API server
-docker run -p 8000:8000 booknlp:cpu
+docker run -p 8000:8000 \
+  -e BOOKNLP_AUTH_REQUIRED=true \
+  -e BOOKNLP_API_KEY=your-secret-key \
+  booknlp:cpu
 
 # Or use docker-compose
 docker compose up
 ```
 
-#### GPU Version (CUDA 12.4)
-
-For GPU acceleration with the big model:
+#### GPU Version
 
 ```bash
-# Build GPU image
-DOCKER_BUILDKIT=1 docker build -f Dockerfile.gpu -t booknlp:cuda .
+# Pull the GPU image
+docker pull booknlp:gpu
 
-# Run with GPU access (requires NVIDIA Container Toolkit)
-docker run --gpus all -p 8001:8000 booknlp:cuda
-
-# Or use docker-compose
-docker compose up booknlp-gpu --build
+# Run with GPU support
+docker run --gpus all -p 8000:8000 \
+  -e BOOKNLP_AUTH_REQUIRED=true \
+  -e BOOKNLP_API_KEY=your-secret-key \
+  booknlp:gpu
 ```
-
-**Performance:**
-- CPU: ~5-10 minutes for 10K tokens (big model)
-- GPU: **< 60 seconds** for 10K tokens (big model) - 5-10x speedup
-
-**GPU Requirements:**
-- NVIDIA GPU with CUDA 12.4 support
-- Minimum 8GB VRAM for big model
-- NVIDIA Container Toolkit installed
-
-The API will be available at `http://localhost:8000` with interactive documentation at `http://localhost:8000/docs`.
 
 ### Option 2: Python Package
 
-* Create anaconda environment, if desired. First [download and install anaconda](https://www.anaconda.com/download/); then create and activate fresh environment.
+```bash
+# Install from PyPI
+pip install booknlp-api
 
-```sh
-conda create --name booknlp python=3.7
-conda activate booknlp
+# Run the server
+booknlp-api serve --host 0.0.0.0 --port 8000
 ```
 
-* If using a GPU, install pytorch for your system and CUDA version by following installation instructions on  [https://pytorch.org](https://pytorch.org).
+## API Reference
 
+### Authentication
 
-* Install booknlp and download Spacy model.
-
-```sh
-pip install booknlp
-python -m spacy download en_core_web_sm
-```
-
-## Usage
-
-### REST API (Docker)
-
-The BookNLP API provides synchronous text analysis via HTTP endpoints:
-
-#### Health Check
+Set `BOOKNLP_AUTH_REQUIRED=true` and `BOOKNLP_API_KEY=your-secret-key` to enable authentication. Include the key in requests:
 
 ```bash
-curl http://localhost:8000/v1/health
+curl -H "X-API-Key: your-secret-key" http://localhost:8000/v1/jobs
 ```
 
-Response:
-```json
+### Endpoints
+
+#### Submit Job
+```http
+POST /v1/jobs
+Content-Type: application/json
+X-API-Key: your-secret-key
+
 {
-  "status": "ok",
-  "timestamp": "2025-12-20T05:00:00.000000"
+  "text": "Text to analyze",
+  "book_id": "unique-identifier",
+  "model": "small|big",
+  "pipeline": ["entities", "quotes", "supersense", "events"]
 }
 ```
 
-#### Readiness Check
+#### Get Job Status
+```http
+GET /v1/jobs/{job_id}
+X-API-Key: your-secret-key
+```
+
+#### Get Job Result
+```http
+GET /v1/jobs/{job_id}/result
+X-API-Key: your-secret-key
+```
+
+#### Cancel Job
+```http
+DELETE /v1/jobs/{job_id}
+X-API-Key: your-secret-key
+```
+
+#### Queue Statistics
+```http
+GET /v1/jobs/stats
+X-API-Key: your-secret-key
+```
+
+#### Health Checks
+```http
+GET /v1/health  # Liveness (no auth required)
+GET /v1/ready   # Readiness (no auth required)
+```
+
+#### Metrics
+```http
+GET /metrics  # Prometheus metrics (no auth required)
+```
+
+### Configuration
+
+Environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BOOKNLP_AUTH_REQUIRED` | `false` | Enable API key authentication |
+| `BOOKNLP_API_KEY` | - | API key for authentication |
+| `BOOKNLP_RATE_LIMIT` | - | Rate limit (e.g., "10/minute") |
+| `BOOKNLP_METRICS_ENABLED` | `true` | Enable Prometheus metrics |
+| `BOOKNLP_SHUTDOWN_GRACE_PERIOD` | `30` | Graceful shutdown period (seconds) |
+
+## Deployment
+
+### Docker Compose
+
+Create a `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  booknlp:
+    image: booknlp:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - BOOKNLP_AUTH_REQUIRED=true
+      - BOOKNLP_API_KEY=${BOOKNLP_API_KEY}
+      - BOOKNLP_RATE_LIMIT=10/minute
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+```
+
+### Kubernetes
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booknlp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: booknlp
+  template:
+    metadata:
+      labels:
+        app: booknlp
+    spec:
+      containers:
+      - name: booknlp
+        image: booknlp:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: BOOKNLP_AUTH_REQUIRED
+          value: "true"
+        - name: BOOKNLP_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: booknlp-secrets
+              key: api-key
+        resources:
+          requests:
+            cpu: 1
+            memory: 2Gi
+          limits:
+            cpu: 2
+            memory: 4Gi
+        livenessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /v1/ready
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: booknlp
+spec:
+  selector:
+    app: booknlp
+  ports:
+  - port: 80
+    targetPort: 8000
+  type: LoadBalancer
+```
+
+## Monitoring
+
+### Prometheus Configuration
+
+```yaml
+scrape_configs:
+  - job_name: 'booknlp'
+    static_configs:
+      - targets: ['booknlp:8000']
+    metrics_path: /metrics
+    scrape_interval: 15s
+```
+
+### Grafana Dashboard
+
+Key metrics to monitor:
+- `http_requests_total` - Request count by endpoint and status
+- `http_request_duration_seconds` - Request latency
+- `booknlp_job_queue_size` - Queue depth
+- `booknlp_jobs_submitted_total` - Jobs submitted
+- `booknlp_jobs_completed_total` - Jobs completed
+
+## Testing
+
+### End-to-End Tests
 
 ```bash
-curl http://localhost:8000/v1/ready
+# Run all E2E tests
+pytest tests/e2e/ -v
+
+# Run specific test
+pytest tests/e2e/test_job_flow_e2e.py::TestJobFlowE2E::test_full_job_flow_with_auth -v
 ```
 
-Response:
-```json
-{
-  "status": "ready",
-  "model_loaded": true,
-  "default_model": "small",
-  "available_models": ["small", "big"],
-  "device": "cuda",
-  "cuda_available": true,
-  "cuda_device_name": "NVIDIA GeForce RTX 3080"
-}
-```
-
-#### Analyze Text
+### Load Testing
 
 ```bash
-curl -X POST http://localhost:8000/v1/analyze \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "Call me Ishmael. Some years ago...",
-    "book_id": "moby_dick",
-    "model": "small",
-    "pipeline": ["entity", "quote", "supersense", "event", "coref"]
-  }'
+cd tests/load
+docker-compose up  # Runs 100 users for 5 minutes
 ```
 
-Response:
-```json
-{
-  "book_id": "moby_dick",
-  "model": "small",
-  "processing_time_ms": 1234,
-  "token_count": 42,
-  "tokens": [...],
-  "entities": [...],
-  "quotes": [...],
-  "characters": [...],
-  "events": [...],
-  "supersenses": [...]
-}
-```
-
-**Request Parameters:**
-- `text` (required): Text to analyze (max 500,000 characters)
-- `book_id` (optional): Identifier for the document (default: "document")
-- `model` (optional): Model size - "small", "big", or "custom" (default: "small")
-- `pipeline` (optional): Components to run (default: all)
-  - Available: `["entity", "quote", "supersense", "event", "coref"]`
-- `custom_model_path` (optional): Path for custom model (only when model="custom")
-
-**Response Fields:**
-- `tokens`: Token metadata with POS tags
-- `entities`: Named entities (people, locations, dates)
-- `quotes`: Extracted quotations with speaker attribution
-- `characters`: Character information and relationships
-- `events`: Event mentions and participants
-- `supersenses`: Supersense tags for semantic roles
-- `processing_time_ms`: Time taken to process (GPU will be faster)
-- `token_count`: Number of tokens processed
-
-#### GPU vs CPU Performance
-
-When using the GPU version, the `/v1/ready` endpoint shows device information:
+### Security Scanning
 
 ```bash
-# Check if GPU is being used
-curl http://localhost:8001/v1/ready
+cd tests/security
+./run_scan.sh
 ```
 
-Response (GPU):
-```json
-{
-  "status": "ready",
-  "model_loaded": true,
-  "default_model": "small",
-  "available_models": ["small", "big"],
-  "device": "cuda",
-  "cuda_available": true,
-  "cuda_device_name": "NVIDIA GeForce RTX 3080"
-}
-```
+## Examples
 
-Response (CPU fallback):
-```json
-{
-  "status": "ready",
-  "model_loaded": true,
-  "default_model": "small",
-  "available_models": ["small", "big"],
-  "device": "cpu",
-  "cuda_available": false,
-  "cuda_device_name": null
-}
-```
-
-**Interactive Documentation:**
-
-Visit `http://localhost:8000/docs` for full OpenAPI documentation with interactive testing.
-
-### Python Library
+### Python Client
 
 ```python
-from booknlp.booknlp import BookNLP
+import asyncio
+import httpx
 
-model_params={
-		"pipeline":"entity,quote,supersense,event,coref", 
-		"model":"big"
-	}
-	
-booknlp=BookNLP("en", model_params)
+async def analyze_text():
+    async with httpx.AsyncClient() as client:
+        # Submit job
+        response = await client.post(
+            "http://localhost:8000/v1/jobs",
+            headers={"X-API-Key": "your-secret-key"},
+            json={
+                "text": "The quick brown fox jumps over the lazy dog.",
+                "book_id": "example",
+                "model": "small",
+                "pipeline": ["entities", "quotes"]
+            }
+        )
+        job_id = response.json()["job_id"]
+        
+        # Poll for completion
+        while True:
+            response = await client.get(
+                f"http://localhost:8000/v1/jobs/{job_id}",
+                headers={"X-API-Key": "your-secret-key"}
+            )
+            status = response.json()["status"]
+            
+            if status == "completed":
+                break
+            elif status == "failed":
+                raise Exception("Job failed")
+            
+            await asyncio.sleep(5)
+        
+        # Get results
+        response = await client.get(
+            f"http://localhost:8000/v1/jobs/{job_id}/result",
+            headers={"X-API-Key": "your-secret-key"}
+        )
+        
+        return response.json()["result"]
 
-# Input file to process
-input_file="input_dir/bartleby_the_scrivener.txt"
-
-# Output directory to store resulting files in
-output_directory="output_dir/bartleby/"
-
-# File within this directory will be named ${book_id}.entities, ${book_id}.tokens, etc.
-book_id="bartleby"
-
-booknlp.process(input_file, output_directory, book_id)
+# Run the analysis
+result = asyncio.run(analyze_text())
+print(f"Found {len(result['entities'])} entities")
 ```
 
-This runs the full BookNLP pipeline; you are able to run only some elements of the pipeline (to cut down on computational time) by specifying them in that parameter (e.g., to only run entity tagging and event tagging, change `model_params` above to include `"pipeline":"entity,event"`).
+### Batch Processing
 
-This process creates the directory `output_dir/bartleby` and generates the following files:
+```python
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
-* `bartleby/bartleby.tokens` -- This encodes core word-level information.  Each row corresponds to one token and includes the following information:
-	* paragraph ID
-	* sentence ID
-	* token ID within sentence
-	* token ID within document
-	* word
-	* lemma
-	* byte onset within original document
-	* byte offset within original document
-	* POS tag
-	* dependency relation
-	* token ID within document of syntactic head 
-	* event
+async def process_documents(documents):
+    """Process multiple documents concurrently."""
+    semaphore = asyncio.Semaphore(5)  # Limit concurrent jobs
+    
+    async def process_single(doc):
+        async with semaphore:
+            # Submit and wait for job
+            # ... (see previous example)
+            pass
+    
+    tasks = [process_single(doc) for doc in documents]
+    results = await asyncio.gather(*tasks)
+    return results
+```
 
-* `bartleby/bartleby.entities` -- This represents the typed entities within the document (e.g., people and places), along with their coreference.
-	* coreference ID (unique entity ID)
-	* start token ID within document
-	* end token ID within document
-	* NOM (nominal), PROP (proper), or PRON (pronoun)
-	* PER (person), LOC (location), FAC (facility), GPE (geo-political entity), VEH (vehicle), ORG (organization)
-	* text of entity
-* `bartleby/bartleby.supersense` -- This stores information from supersense tagging.
-	* start token ID within document
-	* end token ID within document
-	* supersense category (verb.cognition, verb.communication, noun.artifact, etc.) 
-* `bartleby/bartleby.quotes` -- This stores information about the quotations in the document, along with the speaker.  In a sentence like "'Yes', she said", where she -> ELIZABETH\_BENNETT, "she" is the attributed mention of the quotation 'Yes', and is coreferent with the unique entity ELIZABETH\_BENNETT.
-	* start token ID within document of quotation
-	* end token ID within document of quotation
-	* start token ID within document of attributed mention
-	* end token ID within document of attributed mention
-	* attributed mention text
-	* coreference ID (unique entity ID) of attributed mention
-	* quotation text
-* `bartleby/bartleby.book`
+## Troubleshooting
 
-JSON file providing information about all characters mentioned more than 1 time in the book, including their proper/common/pronominal references, referential gender, actions for the which they are the agent and patient, objects they possess, and modifiers.
+### Common Issues
 
-* `bartleby/bartleby.book.html`
+1. **Job Timeout**
+   - Check GPU memory usage
+   - Reduce concurrent jobs
+   - Use smaller model
 
-HTML file containing a.) the full text of the book along with annotations for entities, coreference, and speaker attribution and b.) a list of the named characters and major entity catgories (FAC, GPE, LOC, etc.).
+2. **Rate Limited**
+   - Check `X-RateLimit-*` headers
+   - Increase rate limit if needed
+   - Implement client-side throttling
 
+3. **Authentication Failed**
+   - Verify `BOOKNLP_API_KEY` is set
+   - Check header format: `X-API-Key`
+   - Ensure key matches exactly
 
-# Annotations
+### Debug Mode
 
-## Entity annotations
+```bash
+# Enable debug logging
+export BOOKNLP_LOG_LEVEL=debug
+booknlp-api serve --log-level debug
+```
 
-The entity annotation layer covers six of the ACE 2005 categories in text:
+### Health Checks
 
-* People (PER): *Tom Sawyer*, *her daughter*
-* Facilities (FAC): *the house*, *the kitchen*
-* Geo-political entities (GPE): *London*, *the village*
-* Locations (LOC): *the forest*, *the river*
-* Vehicles (VEH): *the ship*, *the car*
-* Organizations (ORG): *the army*, *the Church*
+```bash
+# Check if service is running
+curl http://localhost:8000/v1/health
 
-The targets of annotation here include both named entities (e.g., Tom Sawyer), common entities (the boy) and pronouns (he).  These entities can be nested, as in the following:
+# Check if models are loaded
+curl http://localhost:8000/v1/ready
 
-<img src="img/nested_structure.png" alt="drawing" width="300"/>
+# Check metrics
+curl http://localhost:8000/metrics
+```
 
+## Contributing
 
-For more, see: David Bamman, Sejal Popat and Sheng Shen, "[An Annotated Dataset of Literary Entities](http://people.ischool.berkeley.edu/~dbamman/pubs/pdf/naacl2019_literary_entities.pdf)," NAACL 2019.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
-The entity tagging model within BookNLP is trained on an annotated dataset of 968K tokens, including the public domain materials in [LitBank](https://github.com/dbamman/litbank) and a new dataset of ~500 contemporary books, including bestsellers, Pulitzer Prize winners, works by Black authors, global Anglophone books, and genre fiction (article forthcoming).
+## License
 
-## Event annotations
-
-The event layer identifies events with asserted *realis* (depicted as actually taking place, with specific participants at a specific time) -- as opposed to events with other epistemic modalities (hypotheticals, future events, extradiegetic summaries by the narrator).
-
-|Text|Events|Source|
-|---|---|---|
-|My father’s eyes had **closed** upon the light of this world six months, when mine **opened** on it.|{closed, opened}|Dickens, David Copperfield|
-|Call me Ishmael.|{}|Melville, Moby Dick|
-|His sister was a tall, strong girl, and she **walked** rapidly and resolutely, as if she knew exactly where she was going and what she was going to do next.|{walked}|Cather, O Pioneers|
-
-For more, see: Matt Sims, Jong Ho Park and David Bamman, "[Literary Event Detection](http://people.ischool.berkeley.edu/~dbamman/pubs/pdf/acl2019_literary_events.pdf)," ACL 2019.
-
-The event tagging model is trained on event annotations within [LitBank](https://github.com/dbamman/litbank).  The `small` model above makes use of a distillation process, by training on the predictions made by the `big` model for a collection of contemporary texts.
-
-## Supersense tagging
-
-[Supersense tagging](https://aclanthology.org/W06-1670.pdf) provides coarse semantic information for a sentence by tagging spans with 41 lexical semantic categories drawn from WordNet, spanning both nouns (including *plant*, *animal*, *food*, *feeling*, and *artifact*) and verbs (including *cognition*, *communication*, *motion*, etc.)
-
-|Example|Source|
-|---|---|
-|The [station wagons]<sub>artifact</sub> [arrived]<sub>motion</sub> at [noon]<sub>time</sub>, a long shining [line]<sub>group</sub> that [coursed]<sub>motion</sub> through the [west campus]<sub>location</sub>.|Delillo, *White Noise*|
-
-
-The BookNLP tagger is trained on [SemCor](https://web.eecs.umich.edu/~mihalcea/downloads.html#semcor).
-
-.
-
-
-## Character name clustering and coreference
-
-The coreference layer covers the six ACE entity categories outlined above (people, facilities, locations, geo-political entities, organizations and vehicles) and is trained on [LitBank](https://github.com/dbamman/litbank) and [PreCo](https://preschool-lab.github.io/PreCo/).
-
-Example|Source|
----|---|
-One may as well begin with [Helen]<sub>x</sub>'s letters to [[her]<sub>x</sub> sister]<sub>y</sub>|Forster, *Howard's End*
-
-Accurate coreference at the scale of a book-length document is still an open research problem, and attempting full coreference -- where any named entity (Elizabeth), common entity (her sister, his daughter) and pronoun (she) can corefer -- tends to erroneously conflate multiple distinct entities into one.  By default, BookNLP addresses this by first carrying out character name clustering  (grouping "Tom", "Tom Sawyer" and "Mr. Sawyer" into a single entity), and then allowing pronouns to corefer with either named entities (Tom) or common entities (the boy), but disallowing common entities from co-referring to named entities.  To turn off this mode and carry out full corefernce, add `pronominalCorefOnly=False` to the `model_params` parameters dictionary above (but be sure to inspect the output!).
-
-For more on the coreference criteria used in this work, see David Bamman, Olivia Lewke and Anya Mansoor (2020), "[An Annotated Dataset of Coreference in English Literature](https://arxiv.org/abs/1912.01140)", LREC.
-
-## Referential gender inference 
-
-BookNLP infers the *referential gender* of characters by associating them with the pronouns (he/him/his, she/her, they/them, xe/xem/xyr/xir, etc.) used to refer to them in the context of the story. This method encodes several assumptions:
-
-* BookNLP describes the referential gender of characters, and not their gender identity. Characters are described by the pronouns used to refer to them (e.g., he/him, she/her) rather than labels like "M/F".
-
-* Prior information on the alignment of names with referential gender (e.g., from government records or larger background datasets) can be used to provide some information to inform this process if desired (e.g., "Tom" is often associated with he/him in pre-1923 English texts).  Name information, however, should not be uniquely determinative, but rather should be sensitive to the context in which it is used (e.g., "Tom" in the book "Tom and Some Other Girls", where Tom is aligned with she/her).  By default, BookNLP uses prior information on the alignment of proper names and honorifics with pronouns drawn from ~15K works from Project Gutenberg; this prior information can be ignored by setting `referential_gender_hyperparameterFile:None` in the model_params file. Alternative priors can be used by passing the pathname to a prior file (in the same format as `english/data/gutenberg_prop_gender_terms.txt`) to this parameter.
-
-* Users should be free to define the referential gender categories used here.  The default set of categories is {he, him, his}, 
-{she, her}, {they, them, their}, {xe, xem, xyr, xir}, and {ze, zem, zir, hir}.  To specify a different set of categories, update the `model_params` setting to define them:
-			`referential_gender_cats: [ ["he", "him", "his"], ["she", "her"], ["they", "them", "their"], ["xe", "xem", "xyr", "xir"], ["ze", "zem", "zir", "hir"] ]`
-
-## Speaker attribution
-
-The speaker attribution model identifies all instances of direct speech in the text and attributes it to its speaker.
-
-
-|Quote|Speaker|Source|
-|---|---|---|
-— Come up , Kinch ! Come up , you fearful jesuit !|Buck\_Mulligan-0|Joyce, *Ulysses*|
-‘ Oh dear ! Oh dear ! I shall be late ! ’|The\_White\_Rabbit-4|Carroll, *Alice in Wonderland*|
-“ Do n't put your feet up there , Huckleberry ; ”|Miss\_Watson-26|Twain, *Huckleberry Finn*|
-
-This model is trained on speaker attribution data in [LitBank](https://github.com/dbamman/litbank).
-For more on the quotation annotations, see [this paper](https://arxiv.org/pdf/2004.13980.pdf).
-
-## Part-of-speech tagging and dependency parsing
-
-BookNLP uses [Spacy](https://spacy.io) for part-of-speech tagging and dependency parsing.
-
-# Acknowledgments
-
-<table><tr><td><img width="250" src="https://www.neh.gov/sites/default/files/inline-files/NEH-Preferred-Seal820.jpg" /></td><td><img width="150" src="https://www.nsf.gov/images/logos/NSF_4-Color_bitmap_Logo.png" /></td><td>
-BookNLP is supported by the National Endowment for the Humanities (HAA-271654-20) and the National Science Foundation (IIS-1942591).
-</td></tr></table>
+Apache License 2.0 - see [LICENSE](LICENSE) for details.
