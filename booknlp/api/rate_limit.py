@@ -61,10 +61,6 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) 
 # Create global limiter instance
 limiter = create_limiter()
 
-# Set custom error handler if limiter is enabled
-if limiter:
-    limiter.state.rate_limit_exceeded_handler = rate_limit_exceeded_handler
-
 
 def rate_limit(limit: str):
     """Decorator for rate limiting endpoints.

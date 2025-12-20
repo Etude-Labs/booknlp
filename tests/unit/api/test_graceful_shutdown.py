@@ -4,7 +4,7 @@ import os
 import asyncio
 import pytest
 import signal
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 
 from booknlp.api.main import create_app
 
@@ -21,7 +21,7 @@ class TestGracefulShutdown:
         app = create_app()
         
         # Start the app
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             # Make a request that takes time (simulate slow processing)
             async def slow_request():
                 # This would need a test endpoint that sleeps
@@ -71,7 +71,7 @@ class TestGracefulShutdown:
         # The ASGI server should handle SIGTERM and call lifespan shutdown
         
         app = create_app()
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             # App should be running
             response = await client.get("/v1/health")
             assert response.status_code == 200
@@ -83,7 +83,7 @@ class TestGracefulShutdown:
         
         # Similar to SIGTERM test
         app = create_app()
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get("/v1/health")
             assert response.status_code == 200
 
@@ -96,7 +96,7 @@ class TestGracefulShutdown:
         # it should force shutdown after timeout
         
         app = create_app()
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get("/v1/health")
             assert response.status_code == 200
 

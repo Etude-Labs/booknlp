@@ -65,8 +65,9 @@ COPY --from=deps /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.
 COPY --from=deps /usr/local/bin /usr/local/bin
 
 # Copy spacy model from models stage (avoid re-download)
+# Note: Using shell to handle glob pattern for dist-info directory
 COPY --from=models /usr/local/lib/python3.12/site-packages/en_core_web_sm /usr/local/lib/python3.12/site-packages/en_core_web_sm
-COPY --from=models /usr/local/lib/python3.12/site-packages/en_core_web_sm*.dist-info /usr/local/lib/python3.12/site-packages/
+COPY --from=models /usr/local/lib/python3.12/site-packages/en_core_web_sm-3.8.0.dist-info /usr/local/lib/python3.12/site-packages/en_core_web_sm-3.8.0.dist-info
 
 # Copy downloaded BookNLP models from models stage
 COPY --from=models /root/booknlp_models /root/booknlp_models

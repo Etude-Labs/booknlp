@@ -2,9 +2,10 @@
 
 import os
 import pytest
+import pytest_asyncio
 import asyncio
 from typing import AsyncGenerator
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 
 from booknlp.api.main import create_app
 
@@ -17,7 +18,7 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session")
 async def app():
     """Create the FastAPI application for testing."""
     # Enable production-like settings
@@ -31,10 +32,10 @@ async def app():
     return app
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(app) -> AsyncGenerator[AsyncClient, None]:
     """Create an HTTP client for E2E tests."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 

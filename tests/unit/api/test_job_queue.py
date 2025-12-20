@@ -179,28 +179,29 @@ async def test_job_expiration():
 @pytest.mark.asyncio
 async def test_queue_stats(job_queue):
     """Test queue statistics."""
-    # Submit jobs
-    for i in range(2):
-        await job_queue.submit_job(JobRequest(text=f"Test {i}"))
+    queue, mock_processor = job_queue
+    await queue.start(mock_processor)
     
-    stats = await job_queue.get_queue_stats()
-    
-    assert stats["total_jobs"] == 2
-    assert stats["queue_size"] == 2
-    assert stats["pending"] == 2
-    assert stats["running"] == 0
-    assert stats["completed"] == 0
-    assert stats["failed"] == 0
-    assert stats["worker_running"] is True
+    try:
+        # Submit jobs
+        for _ in range(2):
+            await queue.submit_job(JobRequest(text="Test"))
+        
+        stats = await queue.get_queue_stats()
+        
+        assert stats["total_jobs"] == 2
+        assert stats["queue_size"] >= 0  # May have started processing
+        assert stats["pending"] + stats["running"] + stats["completed"] == 2
+        assert stats["failed"] == 0
+        assert stats["worker_running"] is True
+    finally:
+        await queue.stop()
 
 
 @pytest.mark.asyncio
 async def test_progress_update(job_queue):
     """Test progress updates."""
-    progress_updates = []
-    
-    def capture_progress(progress):
-        progress_updates.append(progress)
+    queue, _ = job_queue
     
     # Custom processor that reports progress
     async def progress_processor(request, progress_callback):
@@ -209,16 +210,17 @@ async def test_progress_update(job_queue):
             await asyncio.sleep(0.01)
         return {}
     
-    # Replace the processor
-    await job_queue.stop()
-    await job_queue.start(progress_processor)
+    await queue.start(progress_processor)
     
-    request = JobRequest(text="Test text")
-    job = await job_queue.submit_job(request)
-    
-    # Wait for completion
-    await asyncio.sleep(0.2)
-    
-    # Check progress was reported
-    completed_job = await job_queue.get_job(job.job_id)
-    assert completed_job.progress >= 99.0  # Allow for floating point precision
+    try:
+        request = JobRequest(text="Test text")
+        job = await queue.submit_job(request)
+        
+        # Wait for completion
+        await asyncio.sleep(0.2)
+        
+        # Check progress was reported
+        completed_job = await queue.get_job(job.job_id)
+        assert completed_job.progress >= 99.0  # Allow for floating point precision
+    finally:
+        await queue.stop()

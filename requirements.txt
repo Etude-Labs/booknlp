@@ -18,3 +18,10 @@ numpy==1.26.4
 # API framework
 fastapi==0.115.6
 uvicorn==0.34.0
+pydantic-settings==2.12.0
+httpx==0.28.1
+
+# API middleware and observability
+slowapi==0.1.9
+prometheus-fastapi-instrumentator==7.1.0
+prometheus-client==0.23.1

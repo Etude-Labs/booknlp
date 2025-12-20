@@ -3,7 +3,7 @@
 import os
 import pytest
 from fastapi import HTTPException
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 
 from booknlp.api.main import create_app
 from booknlp.api.dependencies import verify_api_key
@@ -20,7 +20,7 @@ class TestAPIKeyAuth:
         os.environ["BOOKNLP_API_KEY"] = "test-key-12345"
         
         app = create_app()
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post("/v1/jobs", json={
                 "text": "Test text",
                 "book_id": "test"
@@ -37,7 +37,7 @@ class TestAPIKeyAuth:
         os.environ["BOOKNLP_API_KEY"] = "test-key-12345"
         
         app = create_app()
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post("/v1/jobs", json={
                 "text": "Test text",
                 "book_id": "test"
@@ -54,7 +54,7 @@ class TestAPIKeyAuth:
         os.environ["BOOKNLP_API_KEY"] = "correct-key-12345"
         
         app = create_app()
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post("/v1/jobs", json={
                 "text": "Test text",
                 "book_id": "test"
@@ -70,7 +70,7 @@ class TestAPIKeyAuth:
         os.environ["BOOKNLP_AUTH_REQUIRED"] = "false"
         
         app = create_app()
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get("/v1/health")
             
             # Health endpoint should work without auth
@@ -84,7 +84,7 @@ class TestAPIKeyAuth:
         os.environ["BOOKNLP_API_KEY"] = "test-key-12345"
         
         app = create_app()
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             # Health endpoint should work without auth key
             response = await client.get("/v1/health")
             assert response.status_code == 200
@@ -97,7 +97,7 @@ class TestAPIKeyAuth:
         os.environ["BOOKNLP_API_KEY"] = "test-key-12345"
         
         app = create_app()
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             # Metrics endpoint should work without auth key
             response = await client.get("/metrics")
             # Will return 404 until implemented, but not 401

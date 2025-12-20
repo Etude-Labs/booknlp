@@ -90,8 +90,9 @@ class JobQueue:
         
         async with self._lock:
             self._jobs[job.job_id] = job
-            
-        await self._queue.put(job)
+        
+        # Use put_nowait to raise QueueFull immediately if queue is full
+        self._queue.put_nowait(job)
         return job
         
     async def get_job(self, job_id: UUID) -> Optional[Job]:

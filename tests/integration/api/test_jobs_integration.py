@@ -2,18 +2,19 @@
 
 import asyncio
 import pytest
+import pytest_asyncio
 from uuid import uuid4
 
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 
 from booknlp.api.main import create_app
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client():
     """Create test client."""
     app = create_app()
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
 
 

@@ -3,6 +3,7 @@
 import os
 from typing import Optional
 
+from prometheus_client import REGISTRY, CollectorRegistry
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from fastapi import FastAPI, Request, Response
 
@@ -20,14 +21,13 @@ def create_metrics() -> Optional[Instrumentator]:
         return None
     
     # Create instrumentator with default metrics
+    # Note: v7.x removed should_instrument_requests_duration (always enabled)
     instrumentator = Instrumentator(
         should_group_status_codes=False,
         should_ignore_untemplated=True,
         should_group_untemplated=True,
         should_instrument_requests_inprogress=True,
-        should_instrument_requests_duration=True,
         excluded_handlers=["/metrics"],
-        env_var_name="BOOKNLP_METRICS_ENABLED",
         inprogress_name="http_requests_inprogress",
         inprogress_labels=True,
     )
@@ -50,23 +50,44 @@ def instrument_app(app: FastAPI) -> None:
     Args:
         app: FastAPI application instance
     """
+    # Check if already instrumented to avoid duplicate registration in tests
+    if hasattr(app.state, '_metrics_instrumented'):
+        return
+    
     instrumentator = create_metrics()
     
     if instrumentator:
-        # Instrument the app
-        instrumentator.instrument(app).expose(app)
-        
-        # Add custom metrics endpoint handler
-        @app.get("/metrics", include_in_schema=False)
-        async def metrics_endpoint(request: Request) -> Response:
-            """Custom metrics endpoint that bypasses auth and rate limiting."""
-            # The instrumentator.expose() already handles this
-            # This is just for documentation
+        try:
+            # Instrument the app
+            instrumentator.instrument(app).expose(app)
+            app.state._metrics_instrumented = True
+        except ValueError as e:
+            # Handle duplicate timeseries error in tests
+            if "Duplicated timeseries" in str(e):
+                # Clear existing collectors and retry
+                _clear_metrics_registry()
+                instrumentator = create_metrics()
+                instrumentator.instrument(app).expose(app)
+                app.state._metrics_instrumented = True
+            else:
+                raise
+
+
+def _clear_metrics_registry() -> None:
+    """Clear Prometheus registry for testing. Only use in test environments."""
+    collectors_to_remove = []
+    for collector in REGISTRY._names_to_collectors.values():
+        collectors_to_remove.append(collector)
+    
+    for collector in set(collectors_to_remove):
+        try:
+            REGISTRY.unregister(collector)
+        except Exception:
             pass
 
 
-# Global instrumentator instance
-_instrumentator = create_metrics()
+# Global instrumentator instance (lazy initialization)
+_instrumentator: Optional[Instrumentator] = None
 
 
 def get_instrumentator() -> Optional[Instrumentator]:
@@ -75,4 +96,7 @@ def get_instrumentator() -> Optional[Instrumentator]:
     Returns:
         The Instrumentator instance or None if metrics disabled
     """
+    global _instrumentator
+    if _instrumentator is None:
+        _instrumentator = create_metrics()
     return _instrumentator

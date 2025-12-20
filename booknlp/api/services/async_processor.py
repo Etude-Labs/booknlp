@@ -4,7 +4,7 @@ import asyncio
 import tempfile
 import os
 import time
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 from booknlp.api.schemas.job_schemas import JobRequest
 from booknlp.api.services.nlp_service import get_nlp_service
