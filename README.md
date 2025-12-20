@@ -33,6 +33,8 @@ GPU time, Titan RTX (mins.)*|2.1|2.2|
 
 The easiest way to use BookNLP is via Docker with the pre-built REST API:
 
+#### CPU Version
+
 ```bash
 # Pull or build the image
 docker pull booknlp:cpu
@@ -45,6 +47,30 @@ docker run -p 8000:8000 booknlp:cpu
 # Or use docker-compose
 docker compose up
 ```
+
+#### GPU Version (CUDA 12.4)
+
+For GPU acceleration with the big model:
+
+```bash
+# Build GPU image
+DOCKER_BUILDKIT=1 docker build -f Dockerfile.gpu -t booknlp:cuda .
+
+# Run with GPU access (requires NVIDIA Container Toolkit)
+docker run --gpus all -p 8001:8000 booknlp:cuda
+
+# Or use docker-compose
+docker compose up booknlp-gpu --build
+```
+
+**Performance:**
+- CPU: ~5-10 minutes for 10K tokens (big model)
+- GPU: **< 60 seconds** for 10K tokens (big model) - 5-10x speedup
+
+**GPU Requirements:**
+- NVIDIA GPU with CUDA 12.4 support
+- Minimum 8GB VRAM for big model
+- NVIDIA Container Toolkit installed
 
 The API will be available at `http://localhost:8000` with interactive documentation at `http://localhost:8000/docs`.
 
@@ -99,7 +125,10 @@ Response:
   "status": "ready",
   "model_loaded": true,
   "default_model": "small",
-  "available_models": ["small", "big"]
+  "available_models": ["small", "big"],
+  "device": "cuda",
+  "cuda_available": true,
+  "cuda_device_name": "NVIDIA GeForce RTX 3080"
 }
 ```
 
@@ -139,6 +168,51 @@ Response:
 - `pipeline` (optional): Components to run (default: all)
   - Available: `["entity", "quote", "supersense", "event", "coref"]`
 - `custom_model_path` (optional): Path for custom model (only when model="custom")
+
+**Response Fields:**
+- `tokens`: Token metadata with POS tags
+- `entities`: Named entities (people, locations, dates)
+- `quotes`: Extracted quotations with speaker attribution
+- `characters`: Character information and relationships
+- `events`: Event mentions and participants
+- `supersenses`: Supersense tags for semantic roles
+- `processing_time_ms`: Time taken to process (GPU will be faster)
+- `token_count`: Number of tokens processed
+
+#### GPU vs CPU Performance
+
+When using the GPU version, the `/v1/ready` endpoint shows device information:
+
+```bash
+# Check if GPU is being used
+curl http://localhost:8001/v1/ready
+```
+
+Response (GPU):
+```json
+{
+  "status": "ready",
+  "model_loaded": true,
+  "default_model": "small",
+  "available_models": ["small", "big"],
+  "device": "cuda",
+  "cuda_available": true,
+  "cuda_device_name": "NVIDIA GeForce RTX 3080"
+}
+```
+
+Response (CPU fallback):
+```json
+{
+  "status": "ready",
+  "model_loaded": true,
+  "default_model": "small",
+  "available_models": ["small", "big"],
+  "device": "cpu",
+  "cuda_available": false,
+  "cuda_device_name": null
+}
+```
 
 **Interactive Documentation:**
 
