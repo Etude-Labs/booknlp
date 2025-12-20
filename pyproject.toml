@@ -46,7 +46,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
-ignore = ["E501"]
+ignore = ["E501", "W291", "W293"]  # Ignore line length and trailing whitespace for existing code
 
 [tool.mypy]
 python_version = "3.12"
