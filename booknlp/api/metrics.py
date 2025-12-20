@@ -35,11 +35,11 @@ def create_metrics() -> Optional[Instrumentator]:
     # Add default metrics
     instrumentator.add(metrics.default())
     
-    # TODO(tech-debt): Add custom BookNLP metrics when needed
+    # Note: Custom BookNLP metrics will be added in future iteration
     # - Job queue metrics (jobs_submitted_total, job_queue_size)
     # - Model metrics (model_load_time, model_loaded)
     # - Job processing duration metrics
-    # See docs/TECHNICAL_DEBT.md
+    # See docs/TECHNICAL_DEBT.md for details
     
     return instrumentator
 

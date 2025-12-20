@@ -52,9 +52,6 @@ def create_app() -> FastAPI:
     Returns:
         Configured FastAPI application instance.
     """
-    # Configure rate limiting
-    rate_limit = get_rate_limit()
-    
     # Create app with rate limiting state if enabled
     if limiter:
         app = FastAPI(
