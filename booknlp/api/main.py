@@ -38,8 +38,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     
     yield
     
-    # Shutdown: Stop the job queue worker
-    await job_queue.stop()
+    # Shutdown: Stop the job queue worker with grace period
+    import os
+    grace_period = float(os.getenv("BOOKNLP_SHUTDOWN_GRACE_PERIOD", "30"))
+    await job_queue.stop(grace_period=grace_period)
 
 
 def create_app() -> FastAPI:

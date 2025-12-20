@@ -42,16 +42,31 @@ class JobQueue:
         self._processor = processor
         self._worker_task = asyncio.create_task(self._worker())
         
-    async def stop(self) -> None:
-        """Stop the background worker."""
+    async def stop(self, grace_period: float = 30.0) -> None:
+        """Stop the background worker gracefully.
+        
+        Args:
+            grace_period: Seconds to wait for current job to finish
+        """
         self._running = False
+        
         if self._worker_task:
-            self._worker_task.cancel()
+            # Wait for current job to finish or timeout
             try:
-                await self._worker_task
+                await asyncio.wait_for(
+                    self._worker_task,
+                    timeout=grace_period
+                )
+            except asyncio.TimeoutError:
+                # Grace period expired, force cancel
+                self._worker_task.cancel()
+                try:
+                    await self._worker_task
+                except asyncio.CancelledError:
+                    pass
             except asyncio.CancelledError:
-                # Re-raise after cleanup
-                raise
+                # Task was cancelled, that's fine
+                pass
                 
     async def submit_job(self, request: JobRequest) -> Job:
         """Submit a new job to the queue.
