@@ -1,0 +1,52 @@
+# Git
+.git/
+.gitignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.windsurf/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Output directories
+output/
+examples/*/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Documentation
+docs/_build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Specs (not needed in container)
+specs/

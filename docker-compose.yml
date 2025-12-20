@@ -1,0 +1,28 @@
+# BookNLP Docker Compose - Local Development
+#
+# Usage:
+#   docker compose up --build    # Build and start
+#   docker compose run booknlp python -c "from booknlp.booknlp import BookNLP; print('OK')"
+#
+# For processing text:
+#   docker compose run booknlp python -m booknlp.booknlp \
+#     --input-file /app/input/mybook.txt \
+#     --output-directory /app/output \
+#     --book-id mybook
+
+services:
+  booknlp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: booknlp:cpu
+    container_name: booknlp
+    volumes:
+      - ./input:/app/input:ro
+      - ./output:/app/output
+    environment:
+      - BOOKNLP_MODEL_PATH=/home/booknlp/booknlp_models
+      - BOOKNLP_DEFAULT_MODEL=small
+    # Keep container running for interactive use
+    stdin_open: true
+    tty: true
