@@ -144,53 +144,28 @@ def _read_booknlp_output(
     return result
 
 
-def _parse_tokens_file(filepath: str) -> list[dict[str, Any]]:
-    """Parse BookNLP tokens file."""
-    tokens = []
+def _parse_tsv_file(filepath: str) -> list[dict[str, Any]]:
+    """Parse a tab-separated BookNLP output file.
+    
+    Args:
+        filepath: Path to the TSV file.
+        
+    Returns:
+        List of dictionaries, one per row.
+    """
+    rows = []
     with open(filepath, "r", encoding="utf-8") as f:
         header = f.readline().strip().split("\t")
         for line in f:
             parts = line.strip().split("\t")
             if len(parts) >= len(header):
-                token = dict(zip(header, parts))
-                tokens.append(token)
-    return tokens
+                row = dict(zip(header, parts))
+                rows.append(row)
+    return rows
 
 
-def _parse_entities_file(filepath: str) -> list[dict[str, Any]]:
-    """Parse BookNLP entities file."""
-    entities = []
-    with open(filepath, "r", encoding="utf-8") as f:
-        header = f.readline().strip().split("\t")
-        for line in f:
-            parts = line.strip().split("\t")
-            if len(parts) >= len(header):
-                entity = dict(zip(header, parts))
-                entities.append(entity)
-    return entities
-
-
-def _parse_quotes_file(filepath: str) -> list[dict[str, Any]]:
-    """Parse BookNLP quotes file."""
-    quotes = []
-    with open(filepath, "r", encoding="utf-8") as f:
-        header = f.readline().strip().split("\t")
-        for line in f:
-            parts = line.strip().split("\t")
-            if len(parts) >= len(header):
-                quote = dict(zip(header, parts))
-                quotes.append(quote)
-    return quotes
-
-
-def _parse_supersense_file(filepath: str) -> list[dict[str, Any]]:
-    """Parse BookNLP supersense file."""
-    supersenses = []
-    with open(filepath, "r", encoding="utf-8") as f:
-        header = f.readline().strip().split("\t")
-        for line in f:
-            parts = line.strip().split("\t")
-            if len(parts) >= len(header):
-                ss = dict(zip(header, parts))
-                supersenses.append(ss)
-    return supersenses
+# Aliases for backward compatibility and clarity
+_parse_tokens_file = _parse_tsv_file
+_parse_entities_file = _parse_tsv_file
+_parse_quotes_file = _parse_tsv_file
+_parse_supersense_file = _parse_tsv_file
