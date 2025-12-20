@@ -158,13 +158,15 @@ class JobQueue:
                 try:
                     # Process the job with progress callback
                     job_id = job.job_id  # Bind before closure
+                    
                     def progress_callback(progress: float) -> None:
                         # job_id is bound from outer scope
-                        asyncio.create_task(self.update_progress(job_id, progress))
+                        progress_task = asyncio.create_task(self.update_progress(job_id, progress))
+                        # Save task reference to prevent garbage collection
+                        _ = progress_task
                     
-                    # Save the task reference to prevent garbage collection
-                    task = asyncio.create_task(self._processor(job.request, progress_callback))
-                    result = await task
+                    # Process the job
+                    result = await self._processor(job.request, progress_callback)
                     
                     async with self._lock:
                         job.status = JobStatus.COMPLETED
@@ -216,7 +218,8 @@ class JobQueue:
         if not job.completed_at:
             return True
             
-        return datetime.utcnow() - job.completed_at > self._job_ttl
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=self._job_ttl_seconds)
+        return job.completed_at < cutoff
         
     async def _cleanup_expired(self) -> None:
         """Remove expired jobs from storage."""

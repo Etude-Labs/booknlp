@@ -3,7 +3,7 @@
 from typing import Any, Dict
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
 
 from booknlp.api.schemas.job_schemas import (
@@ -16,6 +16,7 @@ from booknlp.api.schemas.job_schemas import (
 )
 from booknlp.api.services.job_queue import get_job_queue
 from booknlp.api.services.async_processor import get_async_processor
+from booknlp.api.dependencies import verify_api_key
 
 router = APIRouter(tags=["Jobs"])
 
@@ -31,7 +32,10 @@ router = APIRouter(tags=["Jobs"])
         503: {"description": "Queue full or service not ready"},
     },
 )
-async def submit_job(request: JobRequest) -> JobResponse:
+async def submit_job(
+    request: JobRequest,
+    api_key: str = Depends(verify_api_key)
+) -> JobResponse:
     """Submit a new job for async processing.
     
     Args:
@@ -84,7 +88,9 @@ async def submit_job(request: JobRequest) -> JobResponse:
         200: {"description": "Statistics retrieved successfully"},
     },
 )
-async def get_queue_stats() -> Dict[str, Any]:
+async def get_queue_stats(
+    api_key: str = Depends(verify_api_key)
+) -> Dict[str, Any]:
     """Get queue statistics.
     
     Returns:
@@ -113,7 +119,10 @@ async def get_queue_stats() -> Dict[str, Any]:
         404: {"description": "Job not found or expired"},
     },
 )
-async def get_job_status(job_id: UUID) -> JobStatusResponse:
+async def get_job_status(
+    job_id: UUID,
+    api_key: str = Depends(verify_api_key)
+) -> JobStatusResponse:
     """Get the current status of a job.
     
     Args:
@@ -163,7 +172,10 @@ async def get_job_status(job_id: UUID) -> JobStatusResponse:
         425: {"description": "Job not yet completed"},
     },
 )
-async def get_job_result(job_id: UUID) -> JobResultResponse:
+async def get_job_result(
+    job_id: UUID,
+    api_key: str = Depends(verify_api_key)
+) -> JobResultResponse:
     """Get the results of a completed job.
     
     Args:
@@ -214,7 +226,10 @@ async def get_job_result(job_id: UUID) -> JobResultResponse:
         409: {"description": "Job already running or completed"},
     },
 )
-async def cancel_job(job_id: UUID) -> Dict[str, Any]:
+async def cancel_job(
+    job_id: UUID,
+    api_key: str = Depends(verify_api_key)
+) -> Dict[str, Any]:
     """Cancel a pending job.
     
     Args:

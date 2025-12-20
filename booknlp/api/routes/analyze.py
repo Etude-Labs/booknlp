@@ -5,11 +5,12 @@ import tempfile
 import os
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 
 from booknlp.api.schemas.requests import AnalyzeRequest
 from booknlp.api.schemas.responses import AnalyzeResponse
 from booknlp.api.services.nlp_service import get_nlp_service
+from booknlp.api.dependencies import verify_api_key
 
 router = APIRouter(tags=["Analysis"])
 
@@ -25,7 +26,10 @@ router = APIRouter(tags=["Analysis"])
         503: {"description": "Service not ready"},
     },
 )
-async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
+async def analyze(
+    request: AnalyzeRequest,
+    api_key: str = Depends(verify_api_key)
+) -> AnalyzeResponse:
     """Analyze text using BookNLP.
     
     Args:

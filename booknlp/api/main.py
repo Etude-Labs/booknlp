@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
+from fastapi.middleware import Middleware
+from fastapi.middleware.cors import CORSMiddleware
 
 from booknlp.api.routes import analyze, health, jobs
 from booknlp.api.services.nlp_service import get_nlp_service, initialize_nlp_service
