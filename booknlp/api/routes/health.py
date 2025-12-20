@@ -6,7 +6,6 @@ from typing import Any
 from fastapi import APIRouter, Response, status, Request
 
 from booknlp.api.schemas.responses import HealthResponse, ReadyResponse
-from booknlp.api.rate_limit import rate_limit
 from booknlp.api.config import get_settings
 
 router = APIRouter(tags=["Health"])
@@ -45,7 +44,6 @@ async def ready(request: Request, response: Response) -> ReadyResponse:
     from booknlp.api.services.nlp_service import get_nlp_service
     
     nlp_service = get_nlp_service()
-    settings = get_settings()
     
     if nlp_service.is_ready:
         return ReadyResponse(

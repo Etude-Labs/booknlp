@@ -1,6 +1,5 @@
 """Production configuration for BookNLP API."""
 
-import os
 from enum import Enum
 from functools import lru_cache
 from typing import Optional
@@ -93,11 +92,12 @@ class Settings(BaseSettings):
         """Check if running in development."""
         return self.environment == Environment.DEVELOPMENT
     
-    class Config:
-        env_prefix = "BOOKNLP_"
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = {
+        "env_prefix": "BOOKNLP_",
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "case_sensitive": False,
+    }
 
 
 @lru_cache

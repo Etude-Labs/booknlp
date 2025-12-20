@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 # Constants for repeated field descriptions
 UNIQUE_JOB_ID_DESC = "Unique job identifier"
@@ -91,8 +91,6 @@ class Job(BaseModel):
     processing_time_ms: Optional[int] = None
     token_count: Optional[int] = None
 
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            UUID: lambda v: str(v),
-        }
+    model_config = ConfigDict(
+        ser_json_timedelta="iso8601",
+    )
