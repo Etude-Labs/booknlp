@@ -1,0 +1,45 @@
+name: GPU Validation
+
+on:
+  push:
+    branches: [ main, 'gpu-*' ]
+    paths:
+      - 'Dockerfile.gpu'
+      - 'booknlp/api/services/nlp_service.py'
+      - 'scripts/validate-gpu.sh'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'Dockerfile.gpu'
+      - 'booknlp/api/services/nlp_service.py'
+      - 'scripts/validate-gpu.sh'
+  workflow_dispatch:
+
+jobs:
+  gpu-validation:
+    runs-on: self-hosted-gpu  # Requires GPU runner
+    if: github.repository == 'dbamman/booknlp'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Check GPU availability
+        run: |
+          nvidia-smi
+          docker --version
+          docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
+          
+      - name: Run GPU validation script
+        run: |
+          chmod +x scripts/validate-gpu.sh
+          ./scripts/validate-gpu.sh
+          
+      - name: Upload performance results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: gpu-performance-results
+          path: |
+            gpu-results.json
+            performance.log
