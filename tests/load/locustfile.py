@@ -5,6 +5,9 @@ import random
 from locust import HttpUser, task, between
 from uuid import uuid4
 
+# Constants
+HEALTH_ENDPOINT = "/v1/health"
+
 
 class BookNLPUser(HttpUser):
     """Simulated user for load testing BookNLP API."""
@@ -31,9 +34,8 @@ class BookNLPUser(HttpUser):
     
     def check_health(self):
         """Check if the service is healthy."""
-        response = self.client.get("/v1/health")
-        if response.status_code != 200:
-            print(f"Health check failed: {response.status_code}")
+        self.client.get(HEALTH_ENDPOINT)
+        # Health check response not needed, just verify it doesn't fail
     
     @task(10)
     def submit_job(self):
@@ -59,7 +61,7 @@ class BookNLPUser(HttpUser):
         """Check status of submitted jobs."""
         if hasattr(self, 'job_ids') and self.job_ids:
             job_id = random.choice(self.job_ids)
-            response = self.client.get(f"/v1/jobs/{job_id}", headers=self.headers)
+            self.client.get(f"/v1/jobs/{job_id}", headers=self.headers)
             # Don't care about response, just testing the endpoint
     
     @task(5)
@@ -67,13 +69,13 @@ class BookNLPUser(HttpUser):
         """Get results for completed jobs."""
         if hasattr(self, 'job_ids') and self.job_ids:
             job_id = random.choice(self.job_ids)
-            response = self.client.get(f"/v1/jobs/{job_id}/result", headers=self.headers)
+            self.client.get(f"/v1/jobs/{job_id}/result", headers=self.headers)
             # Don't care about response, just testing the endpoint
     
     @task(15)
     def get_queue_stats(self):
         """Get queue statistics."""
-        response = self.client.get("/v1/jobs/stats", headers=self.headers)
+        self.client.get("/v1/jobs/stats", headers=self.headers)
         # Don't care about response, just testing the endpoint
     
     @task(30)
