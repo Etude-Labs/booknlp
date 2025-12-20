@@ -13,6 +13,7 @@ from booknlp.api.services.nlp_service import get_nlp_service, initialize_nlp_ser
 from booknlp.api.services.job_queue import initialize_job_queue
 from booknlp.api.services.async_processor import get_async_processor
 from booknlp.api.rate_limit import limiter, get_rate_limit
+from booknlp.api.metrics import instrument_app
 
 
 @asynccontextmanager
@@ -86,6 +87,9 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/v1")
     app.include_router(analyze.router, prefix="/v1")
     app.include_router(jobs.router, prefix="/v1")
+    
+    # Instrument with Prometheus metrics
+    instrument_app(app)
     
     return app
 
