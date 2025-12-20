@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "booknlp"
+version = "1.0.7"
+description = "Natural language processing for books"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "David Bamman", email = "dbamman@berkeley.edu"}
+]
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=1.7.1",
+    "tensorflow>=1.15",
+    "spacy>=3",
+    "transformers>=4.11.3",
+]
+
+[project.urls]
+Repository = "https://github.com/dbamman/book-nlp"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "asyncio: marks tests as async",
+    "integration: marks tests as integration tests",
+    "e2e: marks tests as end-to-end tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::pytest.PytestUnknownMarkWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = false
