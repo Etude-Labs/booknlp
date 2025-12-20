@@ -29,10 +29,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/* \
     && ln -sf /usr/bin/python3.10 /usr/bin/python3 \
-    && ln -sf /usr/bin/python3.10 /usr/bin/python
+    && ln -sf /usr/bin/python3.10 /usr/bin/python \
+    && python3.10 -m venv /opt/venv
 
-# Create virtual environment and activate
-RUN python3.10 -m venv /opt/venv
+# Activate virtual environment
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Upgrade pip in virtual environment

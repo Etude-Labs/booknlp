@@ -60,9 +60,23 @@ echo "🔍 Testing device detection..."
 # Start container in background
 docker run -d --name booknlp-gpu-test --gpus all -p 8001:8000 booknlp:cuda
 
-# Wait for startup
+# Wait for startup with model loading check
 echo "⏳ Waiting for API to start..."
 sleep 30
+
+# Check if model is loaded, wait longer if needed
+for i in {1..10}; do
+    READY_RESPONSE=$(curl -s http://localhost:8001/v1/ready || echo "")
+    if [[ $READY_RESPONSE == *"model_loaded\":true"* ]]; then
+        echo "✅ Model loaded successfully"
+        break
+    fi
+    if [[ $i -eq 10 ]]; then
+        echo "⚠️ Model not fully loaded after 5 minutes, proceeding anyway"
+    fi
+    echo "⏳ Waiting for model to load... ($i/10)"
+    sleep 30
+done
 
 # Check ready endpoint
 READY_RESPONSE=$(curl -s http://localhost:8001/v1/ready || echo "")
