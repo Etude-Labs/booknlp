@@ -49,7 +49,6 @@ class TestBookNLPFeaturesE2E:
         
         # Check for expected entity types
         entity_texts = [e["text"] for e in entities]
-        entity_types = [e.get("type", "") for e in entities]
         
         # Should find people
         assert any("John Smith" in text for text in entity_texts)
