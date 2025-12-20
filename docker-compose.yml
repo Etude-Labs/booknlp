@@ -1,16 +1,19 @@
 # BookNLP Docker Compose - Local Development
 #
 # Usage:
-#   docker compose up --build    # Build and start API server
-#   curl http://localhost:8000/v1/health  # Check health
+#   docker compose up --build              # Build and start CPU API server
+#   docker compose up booknlp-gpu --build  # Build and start GPU API server
+#   curl http://localhost:8000/v1/health   # Check health (CPU)
+#   curl http://localhost:8001/v1/health   # Check health (GPU)
 #
 # API endpoints:
 #   GET  /v1/health   - Liveness check
-#   GET  /v1/ready    - Readiness check
+#   GET  /v1/ready    - Readiness check (includes device info)
 #   POST /v1/analyze  - Analyze text
 #   GET  /docs        - OpenAPI documentation
 
 services:
+  # CPU version - default
   booknlp:
     build:
       context: .
@@ -25,6 +28,35 @@ services:
     environment:
       - BOOKNLP_MODEL_PATH=/home/booknlp/booknlp_models
       - BOOKNLP_DEFAULT_MODEL=small
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # GPU version - requires NVIDIA Container Toolkit
+  booknlp-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    image: booknlp:cuda
+    container_name: booknlp-gpu
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./input:/app/input:ro
+      - ./output:/app/output
+    environment:
+      - BOOKNLP_MODEL_PATH=/home/booknlp/booknlp_models
+      - BOOKNLP_DEFAULT_MODEL=small
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
       interval: 30s

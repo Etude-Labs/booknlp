@@ -1,0 +1,121 @@
+# BookNLP Container - CUDA/GPU Version
+# Multi-stage build for optimized image with GPU support
+#
+# Build: DOCKER_BUILDKIT=1 docker build -f Dockerfile.gpu -t booknlp:cuda .
+# Run:   docker run --gpus all -p 8000:8000 booknlp:cuda
+#
+# Requires: NVIDIA Container Toolkit on host
+#
+# Layer ordering optimized for cache efficiency:
+# 1. System deps (rarely change)
+# 2. Python deps with CUDA (change occasionally)
+# 3. Models (change rarely, slow to download)
+# 4. Source code (changes frequently, fast to copy)
+
+# =============================================================================
+# Stage 1: Dependencies - Install Python packages with CUDA support
+# =============================================================================
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04 AS deps
+
+WORKDIR /app
+
+# Install Python 3.12 and build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 \
+    python3.12-venv \
+    python3-pip \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/python3.12 /usr/bin/python3 \
+    && ln -sf /usr/bin/python3.12 /usr/bin/python
+
+# Install Python dependencies with CUDA support
+# Use BuildKit cache mount to persist pip downloads between builds
+COPY requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --break-system-packages -r requirements.txt
+
+# Install PyTorch with CUDA 12.4 support (override CPU version from requirements)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --break-system-packages torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
+
+# =============================================================================
+# Stage 2: Models - Download pretrained models
+# =============================================================================
+FROM deps AS models
+
+# Install spacy model directly via pip
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --break-system-packages https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+
+# Install booknlp for model download
+COPY setup.py .
+COPY booknlp/ booknlp/
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --break-system-packages -e .
+
+# Pre-download BookNLP models (both big and small)
+# GPU will be used automatically if available
+RUN python -c "from booknlp.booknlp import BookNLP; BookNLP('en', {'pipeline': 'entity', 'model': 'big'})" || true
+RUN python -c "from booknlp.booknlp import BookNLP; BookNLP('en', {'pipeline': 'entity', 'model': 'small'})" || true
+
+# =============================================================================
+# Stage 3: Runtime - Final image with GPU support
+# =============================================================================
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04 AS runtime
+
+WORKDIR /app
+
+# Install Python 3.12 and runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 \
+    python3.12-venv \
+    python3-pip \
+    libgomp1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/python3.12 /usr/bin/python3 \
+    && ln -sf /usr/bin/python3.12 /usr/bin/python
+
+# Copy Python packages from deps stage
+COPY --from=deps /usr/local/lib/python3.12/dist-packages /usr/local/lib/python3.12/dist-packages
+COPY --from=deps /usr/lib/python3/dist-packages /usr/lib/python3/dist-packages
+
+# Copy spacy model from models stage
+COPY --from=models /usr/local/lib/python3.12/dist-packages/en_core_web_sm /usr/local/lib/python3.12/dist-packages/en_core_web_sm
+
+# Copy downloaded BookNLP models from models stage
+COPY --from=models /root/booknlp_models /root/booknlp_models
+
+# Create non-root user with access to models
+RUN useradd -m booknlp && \
+    mkdir -p /home/booknlp/booknlp_models && \
+    cp -r /root/booknlp_models/* /home/booknlp/booknlp_models/ 2>/dev/null || true && \
+    mkdir -p /app/input /app/output && \
+    chown -R booknlp:booknlp /app/input /app/output /home/booknlp
+
+# Copy application source LAST (changes most frequently)
+COPY --chown=booknlp:booknlp booknlp/ booknlp/
+COPY --chown=booknlp:booknlp setup.py .
+
+# Environment variables
+ENV BOOKNLP_MODEL_PATH=/home/booknlp/booknlp_models
+ENV BOOKNLP_DEFAULT_MODEL=small
+ENV PYTHONPATH=/app
+# CUDA environment
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Expose API port
+EXPOSE 8000
+
+# Switch to non-root user
+USER booknlp
+
+# Healthcheck for container orchestration
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/v1/health || exit 1
+
+# Default command - run API server
+CMD ["python3", "-m", "uvicorn", "booknlp.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

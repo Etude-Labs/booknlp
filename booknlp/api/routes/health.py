@@ -46,6 +46,9 @@ async def ready(response: Response) -> ReadyResponse:
             model_loaded=True,
             default_model=nlp_service.default_model,
             available_models=nlp_service.available_models,
+            device=str(nlp_service.device),
+            cuda_available=nlp_service.cuda_available,
+            cuda_device_name=nlp_service.cuda_device_name,
         )
     else:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
@@ -54,4 +57,7 @@ async def ready(response: Response) -> ReadyResponse:
             model_loaded=False,
             default_model=nlp_service.default_model,
             available_models=[],
+            device=str(nlp_service.device),
+            cuda_available=nlp_service.cuda_available,
+            cuda_device_name=nlp_service.cuda_device_name,
         )

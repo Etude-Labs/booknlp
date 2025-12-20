@@ -23,6 +23,9 @@ class ReadyResponse(BaseModel):
     model_loaded: bool = Field(description="Whether models are loaded")
     default_model: str = Field(description="Default model name")
     available_models: list[str] = Field(description="List of available models")
+    device: str = Field(default="cpu", description="Device being used: 'cuda' or 'cpu'")
+    cuda_available: bool = Field(default=False, description="Whether CUDA is available")
+    cuda_device_name: str | None = Field(default=None, description="CUDA device name if available")
 
 
 class AnalyzeResponse(BaseModel):

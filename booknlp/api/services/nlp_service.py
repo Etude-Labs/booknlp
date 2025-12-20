@@ -1,6 +1,9 @@
 """NLP service wrapper for BookNLP."""
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import torch
 
 # Global singleton instance
 _nlp_service: "NLPService | None" = None
@@ -19,6 +22,7 @@ class NLPService:
         self._models: dict[str, Any] = {}
         self._ready = False
         self._available_models = ["small", "big"]
+        self._device = self._get_device()
 
     @property
     def is_ready(self) -> bool:
@@ -34,6 +38,36 @@ class NLPService:
     def available_models(self) -> list[str]:
         """Get list of available models."""
         return self._available_models if self._ready else []
+
+    @property
+    def device(self) -> "torch.device":
+        """Get the device being used (cuda or cpu)."""
+        return self._device
+
+    @property
+    def cuda_available(self) -> bool:
+        """Check if CUDA is available."""
+        import torch
+        return torch.cuda.is_available()
+
+    @property
+    def cuda_device_name(self) -> str | None:
+        """Get CUDA device name if available."""
+        import torch
+        if torch.cuda.is_available():
+            return torch.cuda.get_device_name(0)
+        return None
+
+    def _get_device(self) -> "torch.device":
+        """Get the best available device.
+        
+        Returns:
+            torch.device for cuda if available, otherwise cpu.
+        """
+        import torch
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+        return torch.device("cpu")
 
     def load_models(self) -> None:
         """Pre-load models on startup.

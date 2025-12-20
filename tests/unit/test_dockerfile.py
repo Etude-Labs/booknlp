@@ -48,7 +48,7 @@ class TestDockerfileStructure:
         
         content = dockerfile_path.read_text().lower()
         
-        assert "as builder" in content, "Dockerfile should have 'AS builder' stage"
+        assert "as deps" in content, "Dockerfile should have 'AS deps' stage"
 
     def test_dockerfile_copies_requirements(self):
         """Given Dockerfile, it should copy requirements.txt."""
