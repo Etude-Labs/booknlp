@@ -29,6 +29,27 @@ GPU time, Titan RTX (mins.)*|2.1|2.2|
 
 ## Installation
 
+### Option 1: Docker (Recommended)
+
+The easiest way to use BookNLP is via Docker with the pre-built REST API:
+
+```bash
+# Pull or build the image
+docker pull booknlp:cpu
+# OR build locally
+DOCKER_BUILDKIT=1 docker build -t booknlp:cpu .
+
+# Run the API server
+docker run -p 8000:8000 booknlp:cpu
+
+# Or use docker-compose
+docker compose up
+```
+
+The API will be available at `http://localhost:8000` with interactive documentation at `http://localhost:8000/docs`.
+
+### Option 2: Python Package
+
 * Create anaconda environment, if desired. First [download and install anaconda](https://www.anaconda.com/download/); then create and activate fresh environment.
 
 ```sh
@@ -47,6 +68,83 @@ python -m spacy download en_core_web_sm
 ```
 
 ## Usage
+
+### REST API (Docker)
+
+The BookNLP API provides synchronous text analysis via HTTP endpoints:
+
+#### Health Check
+
+```bash
+curl http://localhost:8000/v1/health
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "timestamp": "2025-12-20T05:00:00.000000"
+}
+```
+
+#### Readiness Check
+
+```bash
+curl http://localhost:8000/v1/ready
+```
+
+Response:
+```json
+{
+  "status": "ready",
+  "model_loaded": true,
+  "default_model": "small",
+  "available_models": ["small", "big"]
+}
+```
+
+#### Analyze Text
+
+```bash
+curl -X POST http://localhost:8000/v1/analyze \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Call me Ishmael. Some years ago...",
+    "book_id": "moby_dick",
+    "model": "small",
+    "pipeline": ["entity", "quote", "supersense", "event", "coref"]
+  }'
+```
+
+Response:
+```json
+{
+  "book_id": "moby_dick",
+  "model": "small",
+  "processing_time_ms": 1234,
+  "token_count": 42,
+  "tokens": [...],
+  "entities": [...],
+  "quotes": [...],
+  "characters": [...],
+  "events": [...],
+  "supersenses": [...]
+}
+```
+
+**Request Parameters:**
+- `text` (required): Text to analyze (max 500,000 characters)
+- `book_id` (optional): Identifier for the document (default: "document")
+- `model` (optional): Model size - "small", "big", or "custom" (default: "small")
+- `pipeline` (optional): Components to run (default: all)
+  - Available: `["entity", "quote", "supersense", "event", "coref"]`
+- `custom_model_path` (optional): Path for custom model (only when model="custom")
+
+**Interactive Documentation:**
+
+Visit `http://localhost:8000/docs` for full OpenAPI documentation with interactive testing.
+
+### Python Library
 
 ```python
 from booknlp.booknlp import BookNLP
