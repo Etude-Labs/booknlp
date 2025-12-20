@@ -5,7 +5,7 @@ import tempfile
 import os
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 
 from booknlp.api.schemas.requests import AnalyzeRequest
 from booknlp.api.schemas.responses import AnalyzeResponse
@@ -30,6 +30,7 @@ router = APIRouter(tags=["Analysis"])
 @rate_limit("10/minute")  # Same as job submission
 async def analyze(
     request: AnalyzeRequest,
+    http_request: Request,
     api_key: str = Depends(verify_api_key)
 ) -> AnalyzeResponse:
     """Analyze text using BookNLP.

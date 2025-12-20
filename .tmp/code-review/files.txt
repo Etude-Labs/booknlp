@@ -1,5 +1,0 @@
-.tmp/code-review/files.txt
-.tmp/code-review/git-delta-working-tree.md
-.tmp/code-review/git-status.txt
-.tmp/code-review/report.md
-booknlp/api/main.py

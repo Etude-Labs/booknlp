@@ -36,6 +36,7 @@ router = APIRouter(tags=["Jobs"])
 @rate_limit("10/minute")
 async def submit_job(
     request: JobRequest,
+    http_request: Request,
     api_key: str = Depends(verify_api_key)
 ) -> JobResponse:
     """Submit a new job for async processing.
@@ -92,6 +93,7 @@ async def submit_job(
 )
 @rate_limit("30/minute")
 async def get_queue_stats(
+    http_request: Request,
     api_key: str = Depends(verify_api_key)
 ) -> Dict[str, Any]:
     """Get queue statistics.
@@ -125,6 +127,7 @@ async def get_queue_stats(
 @rate_limit("60/minute")
 async def get_job_status(
     job_id: UUID,
+    http_request: Request,
     api_key: str = Depends(verify_api_key)
 ) -> JobStatusResponse:
     """Get the current status of a job.
@@ -179,6 +182,7 @@ async def get_job_status(
 @rate_limit("30/minute")
 async def get_job_result(
     job_id: UUID,
+    http_request: Request,
     api_key: str = Depends(verify_api_key)
 ) -> JobResultResponse:
     """Get the results of a completed job.
@@ -234,6 +238,7 @@ async def get_job_result(
 @rate_limit("20/minute")
 async def cancel_job(
     job_id: UUID,
+    http_request: Request,
     api_key: str = Depends(verify_api_key)
 ) -> Dict[str, Any]:
     """Cancel a pending job.

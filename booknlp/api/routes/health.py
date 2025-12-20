@@ -17,7 +17,7 @@ router = APIRouter(tags=["Health"])
     description="Returns OK if the service is running.",
 )
 @rate_limit("60/minute")  # More lenient for health checks
-async def health() -> HealthResponse:
+async def health(request: Request) -> HealthResponse:
     """Liveness endpoint for container orchestration."""
     return HealthResponse(status="ok", timestamp=datetime.now(timezone.utc))
 
@@ -33,7 +33,7 @@ async def health() -> HealthResponse:
     },
 )
 @rate_limit("60/minute")  # More lenient for health checks
-async def ready(response: Response) -> ReadyResponse:
+async def ready(request: Request, response: Response) -> ReadyResponse:
     """Readiness endpoint for container orchestration.
     
     Returns 200 when models are loaded, 503 when still loading.
