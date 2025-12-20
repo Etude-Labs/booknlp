@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  booknlp:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - BOOKNLP_AUTH_REQUIRED=true
+      - BOOKNLP_API_KEY=load-test-key
+      - BOOKNLP_RATE_LIMIT=1000/minute  # High limit for load testing
+      - BOOKNLP_METRICS_ENABLED=true
+      - BOOKNLP_SHUTDOWN_GRACE_PERIOD=30
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+  locust:
+    image: locustio/locust:2.17
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./locustfile.py:/mnt/locust/locustfile.py:ro
+    environment:
+      - API_URL=http://booknlp:8000
+      - API_KEY=load-test-key
+      - USERS=100
+      - SPAWN_RATE=10
+      - RUN_TIME=300
+    command: >
+      --host=http://booknlp:8000
+      --users=100
+      --spawn-rate=10
+      --run-time=300s
+      --html=/mnt/locust/reports/report.html
+      --csv=/mnt/locust/reports/results
+      /mnt/locust/locustfile.py
+    depends_on:
+      booknlp:
+        condition: service_healthy
+    volumes:
+      - ./reports:/mnt/locust/reports
+
+networks:
+  default:
+    name: booknlp-load-test
