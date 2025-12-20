@@ -1,7 +1,6 @@
 """Unit tests for position_ids patch (AC1, AC2)."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
