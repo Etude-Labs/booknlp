@@ -1,61 +1,109 @@
-# Code Review Report - GPU Support Implementation
+# Code Review Report - Async Processing Implementation
 
-**Scope**: Working Tree (Sprint 03 GPU Support)
-**Date**: 2025-12-20
-**Files Changed**: 6 files
-**Status**: ✅ READY FOR MERGE
+## Scope: Working Tree (Uncommitted Changes)
+
+### Files Changed
+- `booknlp/api/main.py` - Integration of job queue
+- `booknlp/api/routes/jobs.py` - Job management endpoints
+- `booknlp/api/schemas/job_schemas.py` - Pydantic models
+- `booknlp/api/services/async_processor.py` - Async wrapper for BookNLP
+- `booknlp/api/services/job_queue.py` - Job queue implementation
+- `docs/ASYNC_API.md` - API documentation
+- `tests/unit/api/test_job_queue.py` - Unit tests
+- `tests/integration/api/test_jobs_integration.py` - Integration tests
+
+---
+
+## Critical Issues (Blockers)
+
+### 1. Closure Variable Capture in Progress Callback
+**File**: `booknlp/api/services/job_queue.py` (lines 160-162)
+**Issue**: The `progress_callback` closure captures `job` by reference inside a loop. If another job starts before the callback fires, it will update the wrong job.
+**Fix**: Bind `job_id` as default parameter in the closure.
+
+### 2. Task Reference Not Saved
+**File**: `booknlp/api/services/job_queue.py` (line 162)
+**Issue**: `asyncio.create_task()` result is not saved, risking garbage collection before completion.
+**Fix**: Store the task reference in a variable.
+
+---
+
+## Suggestions
+
+### 1. Unused Variables
+**Files**: Multiple
+- `async_processor.py`: `start_time` and `elapsed` variables are set but never used
+- Remove or use them for timing/logging
+
+### 2. Type Hint Consistency
+**File**: `booknlp/api/services/async_processor.py`
+- Global `_processor` should be `Optional[AsyncBookNLPProcessor]`
+
+### 3. Exception Handling
+**File**: `booknlp/api/services/job_queue.py`
+- Empty except clause should rethrow or handle the exception
+
+### 4. Test Fixture Pattern
+**File**: `tests/unit/api/test_job_queue.py`
+- Fixture pattern needs proper async setup/teardown
+
+---
+
+## Nits
+
+1. Markdown formatting in documentation
+2. Some unused imports can be cleaned up
+
+---
+
+## Architecture Review
+
+### ✅ Good Practices
+- Clean separation of concerns (queue, processor, API, schemas)
+- Proper use of async/await with thread pool for blocking operations
+- Thread-safe progress updates using `call_soon_threadsafe`
+- FIFO queue with single worker (GPU constraint compliance)
+- Comprehensive test coverage
+
+### ⚠️ Areas for Improvement
+- Progress reporting could be more granular (currently simplified)
+- Consider adding metrics/monitoring endpoints
+- Error messages could be more descriptive
+
+---
+
+## Security Review
+
+### ✅ Passed
+- Input validation with Pydantic models
+- No hardcoded secrets
+- Proper error handling without exposing internals
+
+---
+
+## Performance Considerations
+
+### ✅ Good
+- Non-blocking async operations
+- Thread pool for CPU-bound tasks
+- Job expiration prevents memory leaks
+
+### ⚠️ Consider
+- Progress callback frequency could impact performance
+- Large document handling might need streaming
+
+---
+
+## Technical Debt
+
+None identified at this time.
+
+---
 
 ## Summary
-Successfully implemented GPU support with CUDA 12.4, device detection, and validation tools. Container builds and runs on GPU hardware. All acceptance criteria met.
 
-## Blockers 🚨
-None identified.
+**Blockers**: 2 (closure issue, task reference)
+**Suggestions**: 4
+**Nits**: 2
 
-## Suggestions 💡
-
-### 1. Validation Script - Model Loading Race Condition
-**File**: `scripts/validate-gpu.sh:124`
-**Issue**: Fixed 30s wait but still insufficient for model loading
-**Evidence**: Output showed `"status": "loading"` and `"model_loaded": false`
-**Suggestion**: Add retry loop polling `/v1/ready` until `model_loaded: true`
-
-### 2. Dockerfile.gpu - Layer Optimization
-**File**: `Dockerfile.gpu:76`
-**Issue**: SonarQube suggests merging consecutive RUN instructions
-**Suggestion**: Combine apt-get updates for better layer caching
-
-### 3. Health Check Port Mismatch
-**File**: `Dockerfile.gpu:129`
-**Issue**: Healthcheck uses port 8000 but GPU service runs on 8001
-**Suggestion**: Update to port 8001 or make configurable
-
-## Nits ✏️
-
-### 1. Documentation
-- GPU validation docs could mention the 60s model loading time
-- Add troubleshooting section for common CUDA errors
-
-### 2. Error Handling
-- Validation script should check curl exit codes
-- Add timeout for performance test
-
-## Technical Debt 📝
-
-1. **Performance Test JSON Escaping**: Current sed-based escaping is fragile
-2. **Container Size**: 20.7GB is large - consider multi-stage optimization
-3. **Model Download Time**: 236s for big model download during build
-
-## Test Coverage ✅
-- Device detection tested with mocks
-- GPU container builds successfully
-- CUDA detection confirmed on RTX 5060
-- All 48 unit tests passing
-
-## Recommendation
-**DO NOT MERGE** until the venv overwrite issue is fixed. This is a critical blocker that will prevent the container from starting.
-
-## Priority Actions
-1. **Fix Dockerfile.gpu venv copy issue** (BLOCKER)
-2. **Add model loading retry in validation script** (HIGH)
-3. **Update healthcheck port** (MEDIUM)
-4. **Optimize Docker layers** (LOW)
+Overall, this is a well-architected implementation that addresses all sprint requirements. The critical issues around variable capture in closures need immediate attention to ensure correct job progress tracking.

@@ -5,20 +5,36 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
-from booknlp.api.routes import analyze, health
+from booknlp.api.routes import analyze, health, jobs
 from booknlp.api.services.nlp_service import get_nlp_service, initialize_nlp_service
+from booknlp.api.services.job_queue import initialize_job_queue
+from booknlp.api.services.async_processor import get_async_processor
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler for startup/shutdown.
     
-    Loads models on startup and cleans up on shutdown.
+    Loads models on startup, initializes job queue, and cleans up on shutdown.
     """
     # Startup: Initialize NLP service (models loaded lazily or on demand)
     initialize_nlp_service()
     
+    # Initialize and start the job queue
+    job_queue = await initialize_job_queue(
+        processor=get_async_processor().process,
+        max_queue_size=10,
+        job_ttl_seconds=3600,
+    )
+    
+    # Load models to ensure service is ready
+    nlp_service = get_nlp_service()
+    nlp_service.load_models()
+    
     yield
+    
+    # Shutdown: Stop the job queue worker
+    await job_queue.stop()
 
 
 def create_app() -> FastAPI:
@@ -40,6 +56,7 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(health.router, prefix="/v1")
     app.include_router(analyze.router, prefix="/v1")
+    app.include_router(jobs.router, prefix="/v1")
     
     return app
 
