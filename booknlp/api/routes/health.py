@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Response, status, Request
 
 from booknlp.api.schemas.responses import HealthResponse, ReadyResponse
 from booknlp.api.rate_limit import rate_limit, get_rate_limit

@@ -1,5 +1,6 @@
 """FastAPI application factory for BookNLP API."""
 
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -41,7 +42,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
     
     # Shutdown: Stop the job queue worker with grace period
-    import os
     grace_period = float(os.getenv("BOOKNLP_SHUTDOWN_GRACE_PERIOD", "30"))
     await job_queue.stop(grace_period=grace_period)
 
@@ -52,37 +52,31 @@ def create_app() -> FastAPI:
     Returns:
         Configured FastAPI application instance.
     """
+    # Common FastAPI configuration
+    common_config = {
+        "title": "BookNLP API",
+        "description": "REST API for BookNLP natural language processing",
+        "version": "0.2.0",
+        "lifespan": lifespan,
+        "docs_url": "/docs",
+        "redoc_url": "/redoc",
+        "openapi_url": "/openapi.json",
+    }
+    
     # Create app with rate limiting state if enabled
     if limiter:
-        app = FastAPI(
-            title="BookNLP API",
-            description="REST API for BookNLP natural language processing",
-            version="0.2.0",
-            lifespan=lifespan,
-            docs_url="/docs",
-            redoc_url="/redoc",
-            openapi_url="/openapi.json",
-            state=limiter.state,
-        )
-        # Set limiter in app state for slowapi
+        common_config["state"] = limiter.state
+        app = FastAPI(**common_config)
         app.state.limiter = limiter
-        # Add rate limit exception handler
         app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     else:
-        app = FastAPI(
-            title="BookNLP API",
-            description="REST API for BookNLP natural language processing",
-            version="0.2.0",
-            lifespan=lifespan,
-            docs_url="/docs",
-            redoc_url="/redoc",
-            openapi_url="/openapi.json",
-        )
+        app = FastAPI(**common_config)
     
-    # Add CORS middleware
+    # Add CORS middleware with configurable origins
+    cors_origins = os.getenv("BOOKNLP_CORS_ORIGINS", "*").split(",")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

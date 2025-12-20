@@ -1,7 +1,7 @@
 """Job queue service for async BookNLP processing."""
 
 import asyncio
-import threading
+import logging
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
@@ -28,6 +28,7 @@ class JobQueue:
         self._running = False
         self._lock = asyncio.Lock()
         self._progress_callback: Optional[Callable[[UUID, float], None]] = None
+        self._logger = logging.getLogger(__name__)
         
     async def start(self, processor: Callable[[JobRequest, Callable[[float], None]], dict[str, Any]]) -> None:
         """Start the background worker.
@@ -214,7 +215,7 @@ class JobQueue:
                 continue
             except Exception as e:
                 # Log error but continue worker
-                print(f"Worker error: {e}")
+                self._logger.error(f"Worker error: {e}")
                 continue
                 
         # Clean up expired jobs on shutdown
@@ -235,7 +236,7 @@ class JobQueue:
         if not job.completed_at:
             return True
             
-        cutoff = datetime.now(timezone.utc) - timedelta(seconds=self._job_ttl_seconds)
+        cutoff = datetime.now(timezone.utc) - self._job_ttl
         return job.completed_at < cutoff
         
     async def _cleanup_expired(self) -> None:

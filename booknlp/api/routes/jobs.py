@@ -3,7 +3,7 @@
 from typing import Any, Dict
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from fastapi.responses import JSONResponse
 
 from booknlp.api.schemas.job_schemas import (
