@@ -1,14 +1,14 @@
 # BookNLP Docker Compose - Local Development
 #
 # Usage:
-#   docker compose up --build    # Build and start
-#   docker compose run booknlp python -c "from booknlp.booknlp import BookNLP; print('OK')"
+#   docker compose up --build    # Build and start API server
+#   curl http://localhost:8000/v1/health  # Check health
 #
-# For processing text:
-#   docker compose run booknlp python -m booknlp.booknlp \
-#     --input-file /app/input/mybook.txt \
-#     --output-directory /app/output \
-#     --book-id mybook
+# API endpoints:
+#   GET  /v1/health   - Liveness check
+#   GET  /v1/ready    - Readiness check
+#   POST /v1/analyze  - Analyze text
+#   GET  /docs        - OpenAPI documentation
 
 services:
   booknlp:
@@ -17,12 +17,17 @@ services:
       dockerfile: Dockerfile
     image: booknlp:cpu
     container_name: booknlp
+    ports:
+      - "8000:8000"
     volumes:
       - ./input:/app/input:ro
       - ./output:/app/output
     environment:
       - BOOKNLP_MODEL_PATH=/home/booknlp/booknlp_models
       - BOOKNLP_DEFAULT_MODEL=small
-    # Keep container running for interactive use
-    stdin_open: true
-    tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

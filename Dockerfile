@@ -76,8 +76,11 @@ RUN useradd -m booknlp && \
 ENV BOOKNLP_MODEL_PATH=/home/booknlp/booknlp_models
 ENV BOOKNLP_DEFAULT_MODEL=small
 
+# Expose API port
+EXPOSE 8000
+
 # Switch to non-root user
 USER booknlp
 
-# Default command
-CMD ["python", "-m", "booknlp"]
+# Default command - run API server
+CMD ["uvicorn", "booknlp.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

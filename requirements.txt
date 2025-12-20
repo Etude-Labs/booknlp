@@ -14,3 +14,7 @@ spacy==3.8.3
 
 # Additional utilities
 numpy==1.26.4
+
+# API framework
+fastapi==0.115.6
+uvicorn==0.34.0
