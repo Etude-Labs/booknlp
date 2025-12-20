@@ -66,6 +66,9 @@ class JobQueue:
                 except asyncio.CancelledError:
                     # Intentionally not re-raising - we're in shutdown
                     pass
+                else:
+                    # Only re-raise if not CancelledError
+                    raise
             except asyncio.CancelledError:
                 # Task was cancelled, that's fine during shutdown
                 # Intentionally not re-raising to allow clean shutdown
@@ -177,11 +180,15 @@ class JobQueue:
                     # Process the job with progress callback
                     job_id = job.job_id  # Bind before closure
                     
-                    def progress_callback(progress: float) -> None:
-                        # job_id is bound from outer scope
-                        progress_task = asyncio.create_task(self.update_progress(job_id, progress))
-                        # Save task reference to prevent garbage collection
-                        _ = progress_task
+                    # Create progress callback with job_id captured
+                    def make_progress_callback(jid: UUID):
+                        def progress_callback(progress: float) -> None:
+                            progress_task = asyncio.create_task(self.update_progress(jid, progress))
+                            # Save task reference to prevent garbage collection
+                            _ = progress_task
+                        return progress_callback
+                    
+                    progress_callback = make_progress_callback(job_id)
                     
                     # Process the job
                     result = await self._processor(job.request, progress_callback)

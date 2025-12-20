@@ -59,7 +59,7 @@ def verify_api_key(api_key: Optional[str] = Security(api_key_header)) -> Optiona
 
 
 # Optional dependency for endpoints that can work with or without auth
-async def optional_auth(api_key: Optional[str] = Security(api_key_header)) -> Optional[str]:
+def optional_auth(api_key: Optional[str] = Security(api_key_header)) -> Optional[str]:
     """Optional authentication that doesn't fail if auth is disabled.
     
     This is useful for endpoints that should work regardless of auth settings.
