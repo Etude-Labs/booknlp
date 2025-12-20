@@ -134,19 +134,24 @@ She held out her hand, and in her palm was a small golden key that seemed to glo
 "Are you ready to learn the truth about who you really are?"
 EOF
 
+# Create base text
+BASE_TEXT=$(cat /tmp/test_text.txt)
+
 # Repeat text to reach ~10K tokens
 for i in {2..10}; do
     echo "" >> /tmp/test_text.txt
     echo "Chapter $i" >> /tmp/test_text.txt
-    cat /tmp/test_text.txt >> /tmp/test_text.txt
+    echo "$BASE_TEXT" >> /tmp/test_text.txt
 done
 
 # Run performance test
 START_TIME=$(date +%s%3N)
+# Escape JSON properly without jq
+TEXT_ESCAPED=$(cat /tmp/test_text.txt | sed 's/"/\\"/g' | tr -d '\n' | tr -d '\r')
 RESPONSE=$(curl -s -X POST http://localhost:8001/v1/analyze \
     -H "Content-Type: application/json" \
     -d "{
-        \"text\": $(cat /tmp/test_text.txt | jq -Rs .),
+        \"text\": \"$TEXT_ESCAPED\",
         \"book_id\": \"performance_test\",
         \"model\": \"big\"
     }")

@@ -28,9 +28,9 @@ This document explains how to validate the BookNLP GPU container and performance
    sudo systemctl restart docker
    ```
 
-4. **jq** (for validation script)
+4. **Python 3.10** (Ubuntu 22.04 default)
    ```bash
-   sudo apt-get install -y jq
+   python3 --version  # Should show Python 3.10.x
    ```
 
 ## Quick Validation

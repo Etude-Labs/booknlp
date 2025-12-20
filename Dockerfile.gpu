@@ -19,44 +19,52 @@ FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04 AS deps
 
 WORKDIR /app
 
-# Install Python 3.12 and build dependencies
+# Install Python 3.10 and build dependencies (Ubuntu 22.04 default)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.12 \
-    python3.12-venv \
+    python3.10 \
+    python3.10-venv \
+    python3-distutils \
     python3-pip \
     build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/* \
-    && ln -sf /usr/bin/python3.12 /usr/bin/python3 \
-    && ln -sf /usr/bin/python3.12 /usr/bin/python
+    && ln -sf /usr/bin/python3.10 /usr/bin/python3 \
+    && ln -sf /usr/bin/python3.10 /usr/bin/python
 
-# Install Python dependencies with CUDA support
+# Create virtual environment and activate
+RUN python3.10 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Upgrade pip in virtual environment
+RUN pip install --no-cache-dir --upgrade pip
+
+# Install Python dependencies with CUDA support in virtual environment
 # Use BuildKit cache mount to persist pip downloads between builds
 COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --break-system-packages -r requirements.txt
+RUN --mount=type=cache,target=/opt/venv/cache/pip \
+    pip install -r requirements.txt
 
 # Install PyTorch with CUDA 12.4 support (override CPU version from requirements)
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --break-system-packages torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
+RUN --mount=type=cache,target=/opt/venv/cache/pip \
+    pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
 
 # =============================================================================
 # Stage 2: Models - Download pretrained models
 # =============================================================================
 FROM deps AS models
 
-# Install spacy model directly via pip
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --break-system-packages https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+# Install spacy model directly via pip in virtual environment
+RUN --mount=type=cache,target=/opt/venv/cache/pip \
+    pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
 
-# Install booknlp for model download
+# Install booknlp for model download (minimal source needed)
 COPY setup.py .
 COPY booknlp/ booknlp/
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --break-system-packages -e .
+RUN --mount=type=cache,target=/opt/venv/cache/pip \
+    pip install -e .
 
 # Pre-download BookNLP models (both big and small)
-# GPU will be used automatically if available
+# This triggers the automatic download from UC Berkeley servers
 RUN python -c "from booknlp.booknlp import BookNLP; BookNLP('en', {'pipeline': 'entity', 'model': 'big'})" || true
 RUN python -c "from booknlp.booknlp import BookNLP; BookNLP('en', {'pipeline': 'entity', 'model': 'small'})" || true
 
@@ -67,23 +75,27 @@ FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04 AS runtime
 
 WORKDIR /app
 
-# Install Python 3.12 and runtime dependencies
+# Install Python 3.10 and runtime dependencies (Ubuntu 22.04 default)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.12 \
-    python3.12-venv \
+    python3.10 \
+    python3.10-venv \
+    python3-distutils \
     python3-pip \
     libgomp1 \
     curl \
     && rm -rf /var/lib/apt/lists/* \
-    && ln -sf /usr/bin/python3.12 /usr/bin/python3 \
-    && ln -sf /usr/bin/python3.12 /usr/bin/python
+    && ln -sf /usr/bin/python3.10 /usr/bin/python3 \
+    && ln -sf /usr/bin/python3.10 /usr/bin/python
+
+# Create virtual environment and activate
+RUN python3.10 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy Python packages from deps stage
-COPY --from=deps /usr/local/lib/python3.12/dist-packages /usr/local/lib/python3.12/dist-packages
-COPY --from=deps /usr/lib/python3/dist-packages /usr/lib/python3/dist-packages
+COPY --from=deps /opt/venv /opt/venv
 
 # Copy spacy model from models stage
-COPY --from=models /usr/local/lib/python3.12/dist-packages/en_core_web_sm /usr/local/lib/python3.12/dist-packages/en_core_web_sm
+COPY --from=models /opt/venv /opt/venv
 
 # Copy downloaded BookNLP models from models stage
 COPY --from=models /root/booknlp_models /root/booknlp_models
