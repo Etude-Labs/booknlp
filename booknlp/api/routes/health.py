@@ -1,0 +1,57 @@
+"""Health and readiness endpoints."""
+
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Response, status
+
+from booknlp.api.schemas.responses import HealthResponse, ReadyResponse
+
+router = APIRouter(tags=["Health"])
+
+
+@router.get(
+    "/health",
+    response_model=HealthResponse,
+    summary="Liveness check",
+    description="Returns OK if the service is running.",
+)
+async def health() -> HealthResponse:
+    """Liveness endpoint for container orchestration."""
+    return HealthResponse(status="ok", timestamp=datetime.now(timezone.utc))
+
+
+@router.get(
+    "/ready",
+    response_model=ReadyResponse,
+    summary="Readiness check",
+    description="Returns ready status and model availability.",
+    responses={
+        200: {"description": "Service is ready"},
+        503: {"description": "Service is still loading"},
+    },
+)
+async def ready(response: Response) -> ReadyResponse:
+    """Readiness endpoint for container orchestration.
+    
+    Returns 200 when models are loaded, 503 when still loading.
+    """
+    # Import here to avoid circular imports and allow lazy loading
+    from booknlp.api.services.nlp_service import get_nlp_service
+    
+    nlp_service = get_nlp_service()
+    
+    if nlp_service.is_ready:
+        return ReadyResponse(
+            status="ready",
+            model_loaded=True,
+            default_model=nlp_service.default_model,
+            available_models=nlp_service.available_models,
+        )
+    else:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return ReadyResponse(
+            status="loading",
+            model_loaded=False,
+            default_model=nlp_service.default_model,
+            available_models=[],
+        )
