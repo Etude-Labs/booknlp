@@ -5,7 +5,7 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
-from booknlp.api.routes import health
+from booknlp.api.routes import analyze, health
 from booknlp.api.services.nlp_service import get_nlp_service, initialize_nlp_service
 
 
@@ -39,6 +39,7 @@ def create_app() -> FastAPI:
     
     # Include routers
     app.include_router(health.router, prefix="/v1")
+    app.include_router(analyze.router, prefix="/v1")
     
     return app
 
