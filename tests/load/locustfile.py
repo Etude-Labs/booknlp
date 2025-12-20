@@ -81,7 +81,7 @@ class BookNLPUser(HttpUser):
     @task(30)
     def check_health_endpoints(self):
         """Check health endpoints (no auth required)."""
-        self.client.get("/v1/health")
+        self.client.get(HEALTH_ENDPOINT)
         self.client.get("/v1/ready")
     
     @task(10)

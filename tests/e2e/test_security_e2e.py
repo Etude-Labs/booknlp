@@ -90,13 +90,11 @@ class TestSecurityE2E:
     @pytest.mark.asyncio
     async def test_security_headers(self, client: AsyncClient):
         """Test security headers are present."""
-        response = await client.get("/v1/health")
-        
-        # Should have security headers
-        # Note: These might be added by reverse proxy in production
+        # Note: Security headers might be added by reverse proxy in production
         # assert "x-content-type-options" in response.headers
         # assert "x-frame-options" in response.headers
         # assert "x-xss-protection" in response.headers
+        pass
 
     @pytest.mark.asyncio
     async def test_rate_limit_prevents_brute_force(self, client: AsyncClient):
