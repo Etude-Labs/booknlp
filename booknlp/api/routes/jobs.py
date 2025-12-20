@@ -17,6 +17,7 @@ from booknlp.api.schemas.job_schemas import (
 from booknlp.api.services.job_queue import get_job_queue
 from booknlp.api.services.async_processor import get_async_processor
 from booknlp.api.dependencies import verify_api_key
+from booknlp.api.rate_limit import rate_limit
 
 router = APIRouter(tags=["Jobs"])
 
@@ -32,6 +33,7 @@ router = APIRouter(tags=["Jobs"])
         503: {"description": "Queue full or service not ready"},
     },
 )
+@rate_limit("10/minute")
 async def submit_job(
     request: JobRequest,
     api_key: str = Depends(verify_api_key)
@@ -88,6 +90,7 @@ async def submit_job(
         200: {"description": "Statistics retrieved successfully"},
     },
 )
+@rate_limit("30/minute")
 async def get_queue_stats(
     api_key: str = Depends(verify_api_key)
 ) -> Dict[str, Any]:
@@ -119,6 +122,7 @@ async def get_queue_stats(
         404: {"description": "Job not found or expired"},
     },
 )
+@rate_limit("60/minute")
 async def get_job_status(
     job_id: UUID,
     api_key: str = Depends(verify_api_key)
@@ -172,6 +176,7 @@ async def get_job_status(
         425: {"description": "Job not yet completed"},
     },
 )
+@rate_limit("30/minute")
 async def get_job_result(
     job_id: UUID,
     api_key: str = Depends(verify_api_key)
@@ -226,6 +231,7 @@ async def get_job_result(
         409: {"description": "Job already running or completed"},
     },
 )
+@rate_limit("20/minute")
 async def cancel_job(
     job_id: UUID,
     api_key: str = Depends(verify_api_key)

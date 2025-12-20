@@ -11,6 +11,7 @@ from booknlp.api.schemas.requests import AnalyzeRequest
 from booknlp.api.schemas.responses import AnalyzeResponse
 from booknlp.api.services.nlp_service import get_nlp_service
 from booknlp.api.dependencies import verify_api_key
+from booknlp.api.rate_limit import rate_limit
 
 router = APIRouter(tags=["Analysis"])
 
@@ -26,6 +27,7 @@ router = APIRouter(tags=["Analysis"])
         503: {"description": "Service not ready"},
     },
 )
+@rate_limit("10/minute")  # Same as job submission
 async def analyze(
     request: AnalyzeRequest,
     api_key: str = Depends(verify_api_key)

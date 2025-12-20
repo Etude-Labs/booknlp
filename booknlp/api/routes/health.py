@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Response, status
 
 from booknlp.api.schemas.responses import HealthResponse, ReadyResponse
+from booknlp.api.rate_limit import rate_limit, get_rate_limit
 
 router = APIRouter(tags=["Health"])
 
@@ -15,6 +16,7 @@ router = APIRouter(tags=["Health"])
     summary="Liveness check",
     description="Returns OK if the service is running.",
 )
+@rate_limit("60/minute")  # More lenient for health checks
 async def health() -> HealthResponse:
     """Liveness endpoint for container orchestration."""
     return HealthResponse(status="ok", timestamp=datetime.now(timezone.utc))
@@ -30,6 +32,7 @@ async def health() -> HealthResponse:
         503: {"description": "Service is still loading"},
     },
 )
+@rate_limit("60/minute")  # More lenient for health checks
 async def ready(response: Response) -> ReadyResponse:
     """Readiness endpoint for container orchestration.
     

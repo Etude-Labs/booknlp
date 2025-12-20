@@ -6,11 +6,13 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware import Middleware
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter
 
 from booknlp.api.routes import analyze, health, jobs
 from booknlp.api.services.nlp_service import get_nlp_service, initialize_nlp_service
 from booknlp.api.services.job_queue import initialize_job_queue
 from booknlp.api.services.async_processor import get_async_processor
+from booknlp.api.rate_limit import limiter, get_rate_limit
 
 
 @asynccontextmanager
@@ -45,14 +47,39 @@ def create_app() -> FastAPI:
     Returns:
         Configured FastAPI application instance.
     """
-    app = FastAPI(
-        title="BookNLP API",
-        description="REST API for BookNLP natural language processing",
-        version="0.2.0",
-        lifespan=lifespan,
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
+    # Configure rate limiting
+    rate_limit = get_rate_limit()
+    
+    # Create app with rate limiting state if enabled
+    if limiter:
+        app = FastAPI(
+            title="BookNLP API",
+            description="REST API for BookNLP natural language processing",
+            version="0.2.0",
+            lifespan=lifespan,
+            docs_url="/docs",
+            redoc_url="/redoc",
+            openapi_url="/openapi.json",
+            state=limiter.state,
+        )
+    else:
+        app = FastAPI(
+            title="BookNLP API",
+            description="REST API for BookNLP natural language processing",
+            version="0.2.0",
+            lifespan=lifespan,
+            docs_url="/docs",
+            redoc_url="/redoc",
+            openapi_url="/openapi.json",
+        )
+    
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     
     # Include routers
