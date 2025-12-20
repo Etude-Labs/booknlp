@@ -14,6 +14,8 @@ from booknlp.api.services.job_queue import initialize_job_queue
 from booknlp.api.services.async_processor import get_async_processor
 from booknlp.api.rate_limit import limiter, get_rate_limit
 from booknlp.api.metrics import instrument_app
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
 
 @asynccontextmanager
@@ -65,6 +67,10 @@ def create_app() -> FastAPI:
             openapi_url="/openapi.json",
             state=limiter.state,
         )
+        # Set limiter in app state for slowapi
+        app.state.limiter = limiter
+        # Add rate limit exception handler
+        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     else:
         app = FastAPI(
             title="BookNLP API",

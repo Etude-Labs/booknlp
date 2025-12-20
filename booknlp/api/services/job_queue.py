@@ -63,9 +63,11 @@ class JobQueue:
                 try:
                     await self._worker_task
                 except asyncio.CancelledError:
+                    # Intentionally not re-raising - we're in shutdown
                     pass
             except asyncio.CancelledError:
-                # Task was cancelled, that's fine
+                # Task was cancelled, that's fine during shutdown
+                # Intentionally not re-raising to allow clean shutdown
                 pass
                 
     async def submit_job(self, request: JobRequest) -> Job:

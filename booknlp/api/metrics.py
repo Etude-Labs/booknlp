@@ -35,50 +35,11 @@ def create_metrics() -> Optional[Instrumentator]:
     # Add default metrics
     instrumentator.add(metrics.default())
     
-    # Add custom metrics for BookNLP
-    from prometheus_client import Counter, Histogram, Gauge
-    
-    # Job queue metrics
-    jobs_submitted_total = Counter(
-        "booknlp_jobs_submitted_total",
-        "Total number of jobs submitted",
-        ["model", "pipeline"]
-    )
-    
-    jobs_completed_total = Counter(
-        "booknlp_jobs_completed_total",
-        "Total number of jobs completed",
-        ["status", "model", "pipeline"]
-    )
-    
-    job_queue_size = Gauge(
-        "booknlp_job_queue_size",
-        "Current number of jobs in queue"
-    )
-    
-    job_processing_duration = Histogram(
-        "booknlp_job_processing_duration_seconds",
-        "Time spent processing jobs",
-        ["model", "pipeline"],
-        buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 300.0, 600.0, 1800.0, 3600.0]
-    )
-    
-    # Model metrics
-    model_load_time = Histogram(
-        "booknlp_model_load_duration_seconds",
-        "Time spent loading models",
-        ["model"],
-        buckets=[0.1, 0.5, 1.0, 5.0, 10.0, 30.0]
-    )
-    
-    model_loaded = Gauge(
-        "booknlp_model_loaded",
-        "Whether a model is loaded",
-        ["model"]
-    )
-    
-    # Store metrics in app state for access by endpoints
-    # These will be used by the job endpoints to update metrics
+    # TODO(tech-debt): Add custom BookNLP metrics when needed
+    # - Job queue metrics (jobs_submitted_total, job_queue_size)
+    # - Model metrics (model_load_time, model_loaded)
+    # - Job processing duration metrics
+    # See docs/TECHNICAL_DEBT.md
     
     return instrumentator
 
