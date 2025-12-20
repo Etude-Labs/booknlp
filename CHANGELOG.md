@@ -58,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Non-root container user
 - No secrets in logs or responses
 
-## [0.1.0] - 2023-XX-XX
+## [0.1.0] - 2021-XX-XX
 
 ### Added
 - Initial BookNLP release

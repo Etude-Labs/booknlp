@@ -2,7 +2,7 @@
 
 [![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)](https://github.com/dbamman/booknlp/releases/tag/v1.0.0)
 [![Docker](https://img.shields.io/docker/v/booknlp/booknlp?label=docker)](https://hub.docker.com/r/booknlp/booknlp)
-[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![CI](https://github.com/dbamman/booknlp/actions/workflows/ci.yml/badge.svg)](https://github.com/dbamman/booknlp/actions/workflows/ci.yml)
 
 BookNLP is a natural language processing pipeline that scales to books and other long documents (in English), including:

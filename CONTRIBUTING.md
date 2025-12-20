@@ -160,4 +160,4 @@ curl http://localhost:8000/v1/health
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the Apache License 2.0.
+By contributing, you agree that your contributions will be licensed under the MIT License.
