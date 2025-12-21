@@ -148,7 +148,20 @@ def _read_booknlp_output(
     if os.path.exists(supersense_file) and "supersense" in pipeline:
         result["supersenses"] = _parse_supersense_file(supersense_file)
     
+    # Read book file for characters (requires coref pipeline)
+    book_file = os.path.join(output_dir, f"{book_id}.book")
+    if os.path.exists(book_file) and "coref" in pipeline:
+        result["characters"] = _parse_book_file(book_file)
+    
     return result
+
+
+def _parse_book_file(filepath: str) -> list[dict[str, Any]]:
+    """Parse the .book JSON file containing character information."""
+    import json
+    with open(filepath, "r", encoding="utf-8") as f:
+        data = json.load(f)
+        return data.get("characters", [])
 
 
 def _parse_tsv_file(filepath: str) -> list[dict[str, Any]]:
