@@ -1,9 +1,11 @@
 # BookNLP
 
-[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)](https://github.com/dbamman/booknlp/releases/tag/v1.0.0)
-[![Docker](https://img.shields.io/docker/v/booknlp/booknlp?label=docker)](https://hub.docker.com/r/booknlp/booknlp)
+[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)](https://github.com/jahales/booknlp/releases/tag/v1.0.0)
+[![Docker](https://img.shields.io/docker/v/etudelabs/booknlp?label=docker)](https://hub.docker.com/r/etudelabs/booknlp)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![CI](https://github.com/dbamman/booknlp/actions/workflows/ci.yml/badge.svg)](https://github.com/dbamman/booknlp/actions/workflows/ci.yml)
+[![CI](https://github.com/jahales/booknlp/actions/workflows/ci.yml/badge.svg)](https://github.com/jahales/booknlp/actions/workflows/ci.yml)
+
+> **Note**: This is a fork of [BookNLP by David Bamman](https://github.com/dbamman/book-nlp) with added REST API, Docker support, and production features. Licensed under MIT.
 
 BookNLP is a natural language processing pipeline that scales to books and other long documents (in English), including:
 
@@ -49,7 +51,7 @@ BookNLP now provides a REST API for processing text asynchronously with producti
 docker run -p 8000:8000 \
   -e BOOKNLP_AUTH_REQUIRED=true \
   -e BOOKNLP_API_KEY=your-secret-key \
-  booknlp:latest
+  etudelabs/booknlp:latest
 
 # Submit a job
 curl -X POST "http://localhost:8000/v1/jobs" \
@@ -81,13 +83,13 @@ The easiest way to use BookNLP is via Docker with the pre-built REST API:
 
 ```bash
 # Pull the image
-docker pull booknlp:cpu
+docker pull etudelabs/booknlp:cpu
 
 # Run the API server
 docker run -p 8000:8000 \
   -e BOOKNLP_AUTH_REQUIRED=true \
   -e BOOKNLP_API_KEY=your-secret-key \
-  booknlp:cpu
+  etudelabs/booknlp:cpu
 
 # Or use docker-compose
 docker compose up
@@ -97,13 +99,13 @@ docker compose up
 
 ```bash
 # Pull the GPU image
-docker pull booknlp:gpu
+docker pull etudelabs/booknlp:gpu
 
 # Run with GPU support
 docker run --gpus all -p 8000:8000 \
   -e BOOKNLP_AUTH_REQUIRED=true \
   -e BOOKNLP_API_KEY=your-secret-key \
-  booknlp:gpu
+  etudelabs/booknlp:gpu
 ```
 
 ### Option 2: Python Package
@@ -200,7 +202,7 @@ version: '3.8'
 
 services:
   booknlp:
-    image: booknlp:latest
+    image: etudelabs/booknlp:latest
     ports:
       - "8000:8000"
     environment:
@@ -255,7 +257,7 @@ spec:
     spec:
       containers:
       - name: booknlp
-        image: booknlp:latest
+        image: etudelabs/booknlp:latest
         ports:
         - containerPort: 8000
         env:
