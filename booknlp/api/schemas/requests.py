@@ -24,7 +24,7 @@ class AnalyzeRequest(BaseModel):
     )
     pipeline: list[str] = Field(
         default=["entity", "quote", "supersense", "event", "coref"],
-        description="Pipeline components to run",
+        description="Pipeline components: entity, quote, supersense, event, coref",
     )
     custom_model_path: str | None = Field(
         default=None,
