@@ -328,6 +328,150 @@ class EnglishBookNLP:
 		return data
 			
 
+	def process_text(self, text: str) -> dict:
+		"""Process text in-memory and return structured results.
+		
+		This method bypasses file I/O for better performance.
+		
+		Args:
+			text: The text to analyze.
+			
+		Returns:
+			Dictionary containing:
+				- tokens: List of token dicts with char offsets
+				- entities: List of entity dicts with char offsets  
+				- quotes: List of quote dicts with speaker attribution
+				- characters: List of character dicts
+		"""
+		if not text or len(text.strip()) == 0:
+			return {"tokens": [], "entities": [], "quotes": [], "characters": []}
+			
+		with torch.no_grad():
+			# Tokenize text directly (no file I/O)
+			tokens = self.tagger.tag(text)
+			
+			result = {
+				"tokens": [],
+				"entities": [],
+				"quotes": [],
+				"characters": [],
+				"token_count": len(tokens),
+			}
+			
+			# Build token list with char offsets
+			for tok in tokens:
+				result["tokens"].append({
+					"text": tok.text,
+					"lemma": tok.lemma,
+					"pos": tok.pos,
+					"token_id": tok.token_id,
+					"sentence_id": tok.sentence_id,
+					"start_char": tok.startByte,
+					"end_char": tok.endByte,
+				})
+			
+			entities = []
+			assignments = None
+			genders = {}
+			attributed_quotations = []
+			
+			# Entity tagging
+			if self.doEvent or self.doEntities or self.doSS:
+				entity_vals = self.entityTagger.tag(tokens, doEvent=self.doEvent, doEntities=self.doEntities, doSS=self.doSS)
+				entity_vals["entities"] = sorted(entity_vals["entities"])
+				
+				if self.doEvent:
+					events = entity_vals["events"]
+					for token in tokens:
+						if token.token_id in events:
+							token.event = "EVENT"
+			
+			# Quote detection
+			in_quotes = []
+			quotes = self.quoteTagger.tag(tokens)
+			
+			# Quote attribution
+			if self.doQuoteAttrib:
+				entities = entity_vals["entities"]
+				attributed_quotations = self.quote_attrib.tag(quotes, entities, tokens)
+			
+			# Entity processing
+			if self.doEntities:
+				entities = entity_vals["entities"]
+				in_quotes = []
+				
+				for start, end, cat, text_span in entities:
+					if tokens[start].inQuote or tokens[end].inQuote:
+						in_quotes.append(1)
+					else:
+						in_quotes.append(0)
+				
+				# Cluster names
+				refs = self.name_resolver.cluster_narrator(entities, in_quotes, tokens)
+				refs = self.name_resolver.cluster_identical_propers(entities, refs)
+				refs = self.name_resolver.cluster_only_nouns(entities, refs, tokens)
+				
+				# Gender inference
+				genderEM = GenderEM(tokens=tokens, entities=entities, refs=refs, genders=self.gender_cats, hyperparameterFile=self.gender_hyperparameterFile)
+				genders = genderEM.tag(entities, tokens, refs)
+			
+			assignments = None
+			if self.doEntities:
+				assignments = copy.deepcopy(refs)
+			
+			# Coreference resolution
+			if self.doCoref:
+				torch.cuda.empty_cache()
+				assignments = self.litbank_coref.tag(tokens, entities, refs, genders, attributed_quotations, quotes)
+				genders = genderEM.update_gender_from_coref(genders, entities, assignments)
+				
+				# Build character data
+				chardata = self.get_syntax(tokens, entities, assignments, genders)
+				result["characters"] = chardata.get("characters", [])
+			
+			# Build entities output with char offsets
+			if self.doEntities and assignments is not None:
+				for idx, assignment in enumerate(assignments):
+					start, end, cat, text_span = entities[idx]
+					ner_prop = cat.split("_")[0]
+					ner_type = cat.split("_")[1]
+					result["entities"].append({
+						"coref_id": assignment,
+						"start_token": start,
+						"end_token": end,
+						"start_char": tokens[start].startByte,
+						"end_char": tokens[end].endByte,
+						"prop": ner_prop,
+						"cat": ner_type,
+						"text": text_span,
+					})
+			
+			# Build quotes output with char offsets
+			if self.doQuoteAttrib and assignments is not None:
+				for idx, (q_start, q_end) in enumerate(quotes):
+					mention = attributed_quotations[idx]
+					quote_data = {
+						"quote_start": q_start,
+						"quote_end": q_end,
+						"start_char": tokens[q_start].startByte,
+						"end_char": tokens[q_end].endByte,
+						"quote": ' '.join([tok.text for tok in tokens[q_start:q_end+1]]),
+					}
+					if mention is not None:
+						entity = entities[mention]
+						speaker_id = assignments[mention]
+						quote_data["mention_start"] = entity[0]
+						quote_data["mention_end"] = entity[1]
+						quote_data["mention_phrase"] = entity[3]
+						quote_data["char_id"] = speaker_id
+					else:
+						quote_data["mention_start"] = None
+						quote_data["mention_end"] = None
+						quote_data["mention_phrase"] = None
+						quote_data["char_id"] = None
+					result["quotes"].append(quote_data)
+			
+			return result
 
 	def process(self, filename, outFolder, idd):		
 

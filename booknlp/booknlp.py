@@ -16,6 +16,19 @@ class BookNLP():
 	def process(self, inputFile, outputFolder, idd):
 		self.booknlp.process(inputFile, outputFolder, idd)
 
+	def process_text(self, text: str) -> dict:
+		"""Process text in-memory and return structured results.
+		
+		This method bypasses file I/O for better performance.
+		
+		Args:
+			text: The text to analyze.
+			
+		Returns:
+			Dictionary with tokens, entities, quotes, characters.
+		"""
+		return self.booknlp.process_text(text)
+
 
 def proc():
 
